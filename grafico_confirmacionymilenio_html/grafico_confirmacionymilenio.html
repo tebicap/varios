@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>URD-El Pacto y el Reino</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+<link rel="stylesheet" href="./style.css">
+<style type="text/css">
+html {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0px;
+  margin-top: -6px;
+  padding: 0px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at bottom, #ffffff 40%, #dabb83 100%);
+}
+.encabezado {
+  display: inline-block;
+  background-color: #dabb83;
+  height: 133px;
+  width: 100%;
+  margin: 0px;
+  text-align: center;
+  font-family: serif;
+  font-size: 3em;
+  // opacity: 0.15;
+}
+.encabezado_b {  //linea
+  display: inline-block;
+  background-color: #a87e32;
+  height: 2px;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+}
+.titulo {
+  display: display;
+  width: 100%;
+  margin-top: 75px;
+  text-align: center;
+  font-size: 2.8vw;
+}
+.contenido {
+  display: inline-block;
+  overflow: hidden;
+  height: 100vw;
+  width: 100vw;
+  margin: 0px;
+  text-align: center;
+}
+.print {
+  display: inline-block;
+  position: fixed;
+  background-color: black;
+  color: white;
+  font-weight: bold;
+  top: 15px;
+  right: 15px;
+  border: none;
+  box-shadow: 3px 3px 3px #888888;
+}
+.svg {
+  z-index: 900;
+  max-width: 100vw;
+}
+@media print
+{
+    .no-print, .no-print *
+    {
+        display: none !important;
+    }
+    body {
+      background: white;
+    }
+}
+</style>
+</head>
+<body>
+<div id='stars' class="no-print"></div>
+<div id='stars2' class="no-print"></div>
+<div id='stars3' class="no-print"></div>
+<div class="encabezado"><div class="titulo">La Confirmación Del Pacto y el Reino Mesiánico</div></div>
+<div class="encabezado_b"></div>
+<div class="contenido">
+  <object class="svg" type="image/svg+xml" data="contenido.svg">Your browser does not support SVG</object>
+</div>
+<button class="print no-print" onclick="window.print()">Imprimir</button>
+
+</body>
+</html>
