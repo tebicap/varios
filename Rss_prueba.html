@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leer RSS con Fetch API</title>
+</head>
+<body>
+    <h1>Noticias desde el RSS de misitio.com</h1>
+    <div id="rss-contenido">Cargando contenido RSS...</div>
+
+    <script>
+        function obtenerRSS() {
+            fetch('https://misitio.com/rss.xml')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta de la red');
+                    }
+                    return response.text();
+                })
+                .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
+                .then(data => {
+                    const items = data.querySelectorAll("item");
+                    let htmlContent = '<ul>';
+
+                    items.forEach(el => {
+                        const title = el.querySelector("title").textContent;
+                        const link = el.querySelector("link").textContent;
+                        const description = el.querySelector("description").textContent;
+                        htmlContent += `
+                            <li>
+                                <h2><a href="${link}" target="_blank">${title}</a></h2>
+                                <p>${description}</p>
+                            </li>`;
+                    });
+
+                    htmlContent += '</ul>';
+                    document.getElementById('rss-contenido').innerHTML = htmlContent;
+                })
+                .catch(error => {
+                    console.error('Hubo un problema con la operación de fetch:', error);
+                    document.getElementById('rss-contenido').innerHTML = 'Error al cargar el contenido RSS.';
+                });
+        }
+
+        // Llama a la función para obtener el contenido RSS al cargar la página
+        window.onload = obtenerRSS;
+    </script>
+</body>
+</html>

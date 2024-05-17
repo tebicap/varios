@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraping con Fetch API</title>
+</head>
+<body>
+    <h1>Contenido Scrapeado desde misitio.com</h1>
+    <div id="contenido-scrapeado">Cargando contenido...</div>
+
+    <script>
+        // Función para hacer la solicitud y mostrar el contenido
+        function obtenerContenido() {
+            fetch('https://www.hebcal.com/sedrot/index.xml')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta de la red');
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    // Inserta el contenido scrapeado en el div con id "contenido-scrapeado"
+                    document.getElementById('contenido-scrapeado').innerHTML = data;
+                })
+                .catch(error => {
+                    console.error('Hubo un problema con la operación de fetch:', error);
+                    document.getElementById('contenido-scrapeado').innerHTML = 'Error al cargar el contenido.';
+                });
+        }
+
+        // Llama a la función para obtener el contenido al cargar la página
+        window.onload = obtenerContenido;
+    </script>
+</body>
+</html>
