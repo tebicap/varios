@@ -1,0 +1,61 @@
+<html> 
+
+    <head>
+        <meta charset="UTF-8">
+        <script>
+            function getMoonPhase(utcOffset = 3) { // Default to UTC+3 para Jerusalem
+                let now;
+                if (utcOffset == 'local'){
+                    // tiempo actual local
+                    now = new Date();
+                } else {
+                    //obtengo UTC offset local
+                    offset_local = new Date().getTimezoneOffset() / 60;
+                    //construyo tiempo actual desde el lugar indicado:
+                    now = new Date(new Date().getTime() + (offset_local + utcOffset) * 3600000);
+                    //console.log(utcOffset);
+                }
+                const synodic = 29.53058867; // Duración del mes sinódico lunar en días
+                const base = new Date(2000, 0, 6, 18, 14, 0); // Fecha de referencia (luna nueva)
+
+                const diff = (now - base) / 1000 / 60 / 60 / 24; // Diferencia en días desde luna nueva conocida hasta hoy
+                const days = diff % synodic;
+
+                const phase = days / synodic;
+                const illumination = Math.cos((phase - 0.5) * 2 * Math.PI) * 50 + 50;
+
+                let phaseName;
+                if (phase < 0.0625 || phase >= 0.9375) phaseName = "Luna nueva";
+                else if (phase < 0.1875) phaseName = "Luna creciente";
+                else if (phase < 0.3125) phaseName = "Cuarto creciente";
+                else if (phase < 0.4375) phaseName = "Luna gibosa creciente";
+                else if (phase < 0.5625) phaseName = "Luna llena";
+                else if (phase < 0.6875) phaseName = "Luna gibosa menguante";
+                else if (phase < 0.8125) phaseName = "Cuarto menguante";
+                else phaseName = "Luna menguante";
+
+                return {
+                  phase: phaseName,
+                  illumination: illumination.toFixed(2),
+                    currentTime: `${now.getDate()}-${now.getMonth()}-${now.getFullYear()}, ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+                };
+            }
+
+const jerusalemInfo = getMoonPhase(3); // UTC+3 para Jerusalem
+console.log(`Fecha y hora actual en Jerusalem (UTC+3): ${jerusalemInfo.currentTime}`);
+console.log(`Fase actual de la luna: ${jerusalemInfo.phase}`);
+console.log(`Porcentaje de iluminación: ${jerusalemInfo.illumination}%`);
+
+alert(`Fecha y hora actual en Jerusalem: ${jerusalemInfo.currentTime}`);
+
+const localInfo = getMoonPhase('local'); // UTC sin definir para obtener horario local
+console.log(`\nFecha y hora actual en tu localidad: ${localInfo.currentTime}`);
+console.log(`Fase actual de la luna: ${localInfo.phase}`);
+console.log(`Porcentaje de iluminación: ${localInfo.illumination}%`);
+        </script>
+    </head>
+    <body>
+        <h1>Cálculo de luna</h1>
+        <p>Revisa la consola</p>
+    </body>
+</html>
