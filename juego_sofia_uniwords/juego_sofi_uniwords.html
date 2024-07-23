@@ -359,8 +359,6 @@
             }
 
             if (reproducido == "toque1"){
-              // cargo el archivo de audio
-              var audio = new Audio('voz_sofi.mp3');
               // Reproduzco
               audio.play();
               reproducido = "si";
@@ -369,6 +367,9 @@
             reproducido = "toque1";
         }
         let reproducido = "no";
+        // cargo el archivo de audio
+        var audio = new Audio('voz_sofi.mp3');
+        audio.load();
         document.body.addEventListener('touchstart', listener);
     </script>
 </body>
