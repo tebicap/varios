@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apocalipsis 🧠</title>
+    <style>
+        html {
+            background-image: url(bomba_textura_narrow.jpg);
+            background-size: contain;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(to bottom right, #4a0e4ed4, #170a37bd);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .checklist {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        th {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .checkbox-cell {
+            text-align: center;
+        }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            /* Estilos para cambiar el color del checkbox */
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        input[type="checkbox"]:checked {
+            background-color: #90EE90; /* Verde claro */
+            border-color: #90EE90;
+        }
+        input[type="checkbox"]:checked::before {
+            content: '\2714'; /* Símbolo de check */
+            display: block;
+            text-align: center;
+            color: #170a37; /* Color del fondo para contraste */
+            font-size: 14px;
+            line-height: 20px;
+        }
+        .chapter-cell:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Apocalipsis 🧠</h1>
+        <div class="checklist">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capítulo</th>
+                        <th>Leído</th>
+                        <th>Memorizado</th>
+                    </tr>
+                </thead>
+                <tbody id="apocalipsisChecklist">
+                    <!-- Los items del checklist se generarán con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const checklist = document.getElementById('apocalipsisChecklist');
+            let checkedItems = JSON.parse(localStorage.getItem('apocalipsisChecklist')) || {};
+
+            for (let i = 1; i <= 22; i++) {
+                const row = document.createElement('tr');
+                
+                const chapterCell = document.createElement('td');
+                chapterCell.textContent = `Capítulo ${i}`;
+                chapterCell.className = 'chapter-cell';
+                row.appendChild(chapterCell);
+
+                ['estudiado', 'memorizado'].forEach(type => {
+                    const cell = document.createElement('td');
+                    cell.className = 'checkbox-cell';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `capitulo${i}_${type}`;
+                    checkbox.checked = checkedItems[`capitulo${i}_${type}`] || false;
+
+                    cell.appendChild(checkbox);
+                    row.appendChild(cell);
+
+                    checkbox.addEventListener('change', function() {
+                        checkedItems[`capitulo${i}_${type}`] = this.checked;
+                        localStorage.setItem('apocalipsisChecklist', JSON.stringify(checkedItems));
+                    });
+                });
+
+                checklist.appendChild(row);
+            }
+        });
+    </script>
+</body>
+</html>
