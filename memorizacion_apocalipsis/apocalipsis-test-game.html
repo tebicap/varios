@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apocalipsis Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        html {
+            background-image: url(bomba_textura_narrow.jpg);
+            background-size: contain;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom right, #4a0e4ed4, #170a37bd);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        h1 {
+            font-size: 2.0em;
+            margin-bottom: 20px;
+            color: #fff781;
+        }
+        .titulo-juego {
+            font-size: 2.0em;
+            margin-bottom: 130px;
+            color: #fff781;
+        }
+        .btn {
+            background-color: #4ecdc4;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45b7aa;
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .option {
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 12px;
+            border: solid 1px #005a8b;
+        }
+        .option:hover {
+            background-color: #34495e;
+        }
+        .score {
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+        .feedback {
+            font-size: 1.2em;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .correct {
+            color: #4ecdc4;
+        }
+        .incorrect {
+            color: #ff6b6b;
+        }
+        .restart {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.9em;
+            padding: 5px 10px;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.8em;
+            background-color: #2c3e50;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake {
+            animation: shake 0.5s;
+            animation-iteration-count: 1;
+        }
+        .stats {
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="game-container">
+        <h1 class="titulo-juego">Apocalipsis Test</h1>
+        <button id="start-btn" class="btn">COMENZAR</button>
+    </div>
+    <button id="restart-btn" class="btn restart">Reiniciar</button>
+    <footer>
+        Creado por Esteban Capella
+    </footer>
+
+    <script>
+        const questions = [
+            {
+                question: "¿Cuál es el mejor método para purificar agua en una situación de emergencia?",
+                options: [
+                    "Hervirla",
+                    "Añadir cloro",
+                    "Filtrarla con una camiseta",
+                    "Dejarla al sol"
+                ],
+                correctAnswer: 0
+            },
+            {
+                question: "¿Cuál de estos no es un signo de infección en una herida?",
+                options: [
+                    "Enrojecimiento",
+                    "Hinchazón",
+                    "Frío local",
+                    "Dolor"
+                ],
+                correctAnswer: 2
+            },
+            {
+                question: "¿Qué planta es comestible y fácil de identificar en la naturaleza?",
+                options: [
+                    "Hiedra venenosa",
+                    "Diente de león",
+                    "Amapola",
+                    "Helecho"
+                ],
+                correctAnswer: 1
+            },
+            {
+                question: "¿Cuál es la regla de tres para la supervivencia?",
+                options: [
+                    "3 minutos sin aire, 3 días sin agua, 3 semanas sin comida",
+                    "3 horas sin refugio, 3 días sin agua, 3 semanas sin comida",
+                    "3 días sin aire, 3 semanas sin agua, 3 meses sin comida",
+                    "3 horas sin aire, 3 días sin agua, 3 semanas sin refugio"
+                ],
+                correctAnswer: 0
+            },
+            {
+                question: "¿Cuál es la mejor forma de orientarse sin brújula durante el día?",
+                options: [
+                    "Siguiendo el vuelo de las aves",
+                    "Observando el musgo en los árboles",
+                    "Usando un reloj analógico y el sol",
+                    "Siguiendo el curso de un río"
+                ],
+                correctAnswer: 2
+            },
+            {
+                question: "¿Qué tipo de nudo es más útil para asegurar una carga?",
+                options: [
+                    "Nudo simple",
+                    "Nudo de bowline",
+                    "Nudo de ocho",
+                    "Nudo constrictor"
+                ],
+                correctAnswer: 3
+            },
+            {
+                question: "¿Cuál es la señal internacional de socorro?",
+                options: [
+                    "SOS",
+                    "HELP",
+                    "MAYDAY",
+                    "911"
+                ],
+                correctAnswer: 0
+            },
+            {
+                question: "¿Qué método se usa para estimar la cantidad de luz diurna restante?",
+                options: [
+                    "Regla del pulgar",
+                    "Método del reloj solar",
+                    "Técnica de la palma",
+                    "Observación de las sombras"
+                ],
+                correctAnswer: 0
+            },
+            {
+                question: "¿Cuál es el mejor material para hacer un refugio improvisado?",
+                options: [
+                    "Plástico",
+                    "Ramas y hojas",
+                    "Nieve compacta",
+                    "Piedras apiladas"
+                ],
+                correctAnswer: 1
+            },
+            {
+                question: "¿Qué parte de una planta es generalmente segura para comer si no estás seguro de su toxicidad?",
+                options: [
+                    "Raíces",
+                    "Hojas",
+                    "Frutos",
+                    "Ninguna parte es segura sin identificación"
+                ],
+                correctAnswer: 3
+            },
+            {
+                question: "¿Cuál es la mejor manera de conservar el calor corporal en una situación de frío extremo?",
+                options: [
+                    "Beber alcohol",
+                    "Hacer ejercicio intenso",
+                    "Acurrucarse en posición fetal",
+                    "Comer alimentos grasos"
+                ],
+                correctAnswer: 2
+            },
+            {
+                question: "¿Qué color de ropa es más visible durante una operación de rescate?",
+                options: [
+                    "Negro",
+                    "Verde",
+                    "Naranja brillante",
+                    "Camuflaje"
+                ],
+                correctAnswer: 2
+            }
+        ];
+
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswers = 0;
+        let incorrectAnswers = 0;
+
+        const gameContainer = document.getElementById('game-container');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const correctSound = new Audio('correcto.mp3');
+        const incorrectSound = new Audio('incorrecto.mp3');
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame() {
+            currentQuestions = [...questions];
+            shuffleArray(currentQuestions);
+            currentQuestions = currentQuestions.slice(0, 10);
+            currentQuestionIndex = 0;
+            score = 0;
+            correctAnswers = 0;
+            incorrectAnswers = 0;
+            showQuestion();
+        }
+
+        function saveGameState() {
+            localStorage.setItem('apocalipsisTestState', JSON.stringify({
+                currentQuestions,
+                currentQuestionIndex,
+                score,
+                correctAnswers,
+                incorrectAnswers
+            }));
+        }
+
+        function loadGameState() {
+            const state = JSON.parse(localStorage.getItem('apocalipsisTestState'));
+            if (state) {
+                currentQuestions = state.currentQuestions;
+                currentQuestionIndex = state.currentQuestionIndex;
+                score = state.score;
+                correctAnswers = state.correctAnswers;
+                incorrectAnswers = state.incorrectAnswers;
+                if (currentQuestionIndex > 0) {
+                    showQuestion();
+                }
+            }
+        }
+
+        function showQuestion() {
+            if (currentQuestionIndex >= currentQuestions.length) {
+                showFinalScore();
+                return;
+            }
+
+            const question = currentQuestions[currentQuestionIndex];
+            gameContainer.innerHTML = `
+                <h1>${question.question}</h1>
+                <div class="options">
+                    ${question.options.map((option, index) => `
+                        <div class="option" onclick="opcionColor(this); selectAnswer(${index})">${option}</div>
+                    `).join('')}
+                </div>
+                <div class="score">Puntaje: ${score}</div>
+            `;
+            saveGameState();
+        }
+
+        function opcionColor(objeto){
+            objeto.style.backgroundColor = '#639fdb';
+        }
+
+        function selectAnswer(index) {
+            const question = currentQuestions[currentQuestionIndex];
+            const isCorrect = index === question.correctAnswer;
+            
+            if (isCorrect) {
+                score += 3;
+                correctAnswers++;
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+                correctSound.play();
+            } else {
+                incorrectAnswers++;
+                document.body.classList.add('shake');
+                document.body.style.backgroundColor = '#ff0000';
+                setTimeout(() => {
+                    document.body.classList.remove('shake');
+                    document.body.style.backgroundColor = '';
+                }, 1000);
+                incorrectSound.play();
+            }
+
+            gameContainer.innerHTML += `
+                <div class="feedback ${isCorrect ? 'correct' : 'incorrect'}">
+                    ${isCorrect ? '¡Correcto!' : 'Incorrecto'}
+                </div>
+            `;
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                showQuestion();
+            }, 3000);
+        }
+
+        function showFinalScore() {
+            const totalQuestions = currentQuestions.length;
+            const percentageCorrect = (correctAnswers / totalQuestions) * 100;
+            
+            gameContainer.innerHTML = `
+                <h1>¡Juego terminado!</h1>
+                <div class="stats">
+                    <p>Puntaje final: ${score}</p>
+                    <p>Preguntas correctas: ${correctAnswers}</p>
+                    <p>Preguntas incorrectas: ${incorrectAnswers}</p>
+                    <p>Porcentaje de aciertos: ${percentageCorrect.toFixed(0)}%</p>
+                </div>
+                <button class="btn" onclick="restartGame()">Jugar de nuevo</button>
+            `;
+        }
+
+        function restartGame() {
+            localStorage.removeItem('apocalipsisTestState');
+            startGame();
+        }
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', restartGame);
+
+        loadGameState();
+    </script>
+</body>
+</html>
