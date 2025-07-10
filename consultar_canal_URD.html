@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Últimos Videos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1em; background: #bdbfc7; }
+    h1 { font-size: 1.5em; justify-self: center; color: #ff0033; text-shadow: 0px 0px 5px #ffffff, 0px 0px 14px #5b5b5b;}
+    input, button { width: 100%; padding: 0.7em; margin: 0.5em 0; font-size: 1em; border-radius: 5px;}
+    input {max-width: 88vw;}
+    button {background-color: #ff0033; color: white; font-weight: 700;}
+    #videos { margin-top: 1em; }
+    .video { background: white; margin: 0.5em 0; padding: 1em; border-radius: 8px; }
+    .video img { width: 100%; border-radius: 4px; }
+    .video h2 { margin: 0.5em 0 0.3em; font-size: 1.2em; }
+    .entrada_short {background-color: #fff575} .entrada_short img { box-shadow: 2px 2px 5px #73790e;}
+    .entrada_short::before{
+        content: "SHORT";
+        display: inline;
+        position: relative;
+        width: contents;
+        padding: 10px 6px 10px 6px;
+        top: 45px;
+        left: 15px;
+        border-radius: 10%;
+        color: black;
+        background-color: #fff575;
+        z-index: 999;
+        
+    }
+    .entrada_vivo {background-color: #90ee90} .entrada_vivo img { box-shadow: 2px 2px 5px #1a790e;}
+    .entrada_vivo::before{
+        content: "VIVO";
+        display: inline;
+        position: relative;
+        width: contents;
+        padding: 10px 6px 10px 6px;
+        top: 45px;
+        left: 15px;
+        border-radius: 10%;
+        color: black;
+        background-color: #90ee90;
+        z-index: 999;
+        
+    }
+    .entrada_video {background-color: #75ddff} .entrada_video img { box-shadow: 2px 2px 5px #0e6679;}
+    .entrada_video::before{
+        content: "VIDEO";
+        display: inline;
+        position: relative;
+        width: contents;
+        padding: 10px 6px 10px 6px;
+        top: 45px;
+        left: 15px;
+        border-radius: 10%;
+        color: black;
+        background-color: #75ddff;
+        box-shadow: 2px 2px 5px #73790e;
+        z-index: 999;
+        
+    }
+    .entrada_desconocido {background-color: orange} .entrada_desconocido img { box-shadow: 2px 2px 5px #79350e;}
+    .entrada_desconocido::before{
+        content: "Tipo de video DESCONOCIDO";
+        display: inline;
+        position: relative;
+        width: contents;
+        padding: 10px 6px 10px 6px;
+        top: 45px;
+        left: 15px;
+        border-radius: 10%;
+        color: black;
+        background-color: orange;
+        box-shadow: 2px 2px 5px #73790e;
+        z-index: 999;
+        
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Últimos videos de YouTube</h1>
+  <input type="text" id="canal_id" placeholder="ID del canal" value="UCgWXo14acH5J_rHLu2A-DIg" />
+  <button onclick="buscarVideos()">BUSCAR</button>
+
+  <div id="videos"></div>
+
+  <script>
+    let app_ultimosvideos = [];
+
+    async function buscarVideos() {
+      const canalID = document.getElementById("canal_id").value.trim();
+
+      /* const url = `https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.youtube.com%2Ffeeds%2Fvideos.xml%3Fchannel_id%3D${canalID}`; */
+      const url = `https://api.rss2json.com/v1/api.json?rss_url=https://www.youtube.com/feeds/videos.xml?channel_id=${canalID}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        /* Esto era en el caso de que obtengo los datos cruods de google, pero los obtengo de la api de rss2json
+        const texto = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(texto, "application/xml");
+          console.log(xml); //solo un test en consola
+        const entries = Array.from(xml.getElementsByTagName("entry")).slice(0, 5);
+        */
+
+        app_ultimosvideos = data.items.slice(0, 10).map(item => {
+            const tipo = item.link.includes("/shorts/") ? "short" :
+                         item.link.includes("live") ? "vivo" : "video";
+            let color;
+            switch (tipo){
+                case "short": estilo = "entrada_short";
+                break;
+                case "vivo": estilo = "entrada_vivo";
+                break;
+                case "video": estilo = "entrada_video";
+                break;
+                default: estilo = "entrada_desconocida";
+            }
+            return {
+              id: item.guid.replace("yt:video:", ""),
+              titulo: item.title,
+              fecha: item.pubDate,
+              descripcion: item.description,
+              miniatura: item.thumbnail,
+              tipo: tipo,
+              estilo: estilo
+            };
+          });
+
+          console.log("app_ultimosvideos =", app_ultimosvideos);
+          mostrarVideos();
+      } catch (error) {
+        console.error("Error al obtener videos:", error);
+        alert("No se pudieron obtener los videos. Verifica el ID del canal.");
+      }
+    }
+
+    function mostrarVideos() {
+          const contenedor = document.getElementById("videos");
+          contenedor.innerHTML = "";
+
+          app_ultimosvideos.forEach(video => {
+            const div = document.createElement("div");
+              div.className = `video ${video.estilo}`;
+
+            div.innerHTML = `
+              <img src="${video.miniatura}" alt="Miniatura del video" >
+              <h2>${video.titulo}</h2>
+              <p><strong>Fecha:</strong> ${video.fecha.split(' ')[0]}, (${video.fecha.split(' ')[1].slice(0, -3)} HS.)</p>
+              <p><strong>Tipo:</strong> ${video.tipo}</p>
+              <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank">Ver en YouTube</a>
+            `;
+
+            contenedor.appendChild(div);
+          });
+        }
+
+    // Carga automática con canal por defecto
+    //window.onload = buscarVideos;
+  </script>
+
+</body>
+</html>
