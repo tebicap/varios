@@ -76,6 +76,34 @@
         z-index: 999;
         
     }
+    .videos_encontrados{
+      color: black;
+      padding-top: 0px;
+      margin-top: 4px;
+    }
+    .vid_descripcion{
+      color: #636363;
+      max-height: 35px;
+      overflow: hidden;
+      white-space: pre-wrap;
+      transition: max-height 0.3s ease-in-out;
+    }
+    .vid_descripcion_desplegado{
+      max-height: 500px;
+    }
+    .copiar_boton{
+      background-color: #00000042;
+      width: min-content;
+      padding: 5px 8px 5px 8px;
+      border-radius: 4px;
+      align-self: end;
+      color: white;
+      user-select: none;
+    }
+    #pie-item{
+      display: flex;
+      flex-direction: row-reverse;
+    }
   </style>
 </head>
 <body>
@@ -84,33 +112,48 @@
   <input type="text" id="canal_id" placeholder="ID del canal" value="UCgWXo14acH5J_rHLu2A-DIg" />
   <button onclick="buscarVideos()">BUSCAR</button>
 
+  <p id="videos-encontrados" class="videos_encontrados"></p>
+
   <div id="videos"></div>
 
   <script>
+    function switch_desplegar(elem){
+      // desliega o enrolla la descripción de los videos
+      //document.getElementById("videos-encontrados").classList.toggle('vid_descripcion_desplegado');
+      elem.classList.toggle("vid_descripcion_desplegado");
+    }
+
     let app_ultimosvideos = [];
 
     async function buscarVideos() {
       const canalID = document.getElementById("canal_id").value.trim();
 
-      /* const url = `https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.youtube.com%2Ffeeds%2Fvideos.xml%3Fchannel_id%3D${canalID}`; */
-      const url = `https://api.rss2json.com/v1/api.json?rss_url=https://www.youtube.com/feeds/videos.xml?channel_id=${canalID}`;
+      //const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${canalID}`;
+      //const url = `https://api.rss2json.com/v1/api.json?rss_url=https://www.youtube.com/feeds/videos.xml?channel_id=${canalID}`;
+      const url = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?channel_id=${canalID}`)}`;
 
       try {
         const res = await fetch(url);
         const data = await res.json();
-
-        /* Esto era en el caso de que obtengo los datos cruods de google, pero los obtengo de la api de rss2json
-        const texto = await res.text();
+        //const xmlText = data.contents;
         const parser = new DOMParser();
-        const xml = parser.parseFromString(texto, "application/xml");
-          console.log(xml); //solo un test en consola
-        const entries = Array.from(xml.getElementsByTagName("entry")).slice(0, 5);
-        */
+        const xmlDoc = parser.parseFromString(data.contents, 'text/xml');
+        console.log(xmlDoc);
 
-        app_ultimosvideos = data.items.slice(0, 10).map(item => {
-            const tipo = item.link.includes("/shorts/") ? "short" :
-                         item.link.includes("live") ? "vivo" : "video";
+        //title: entry.querySelector('title').textContent,
+        //link: entry.querySelector('link').href,
+        //published: entry.querySelector('published').textContent,
+        //videoId: entry.querySelector('yt\\:videoId, videoId').textContent,
+        //channelId: entry.querySelector('yt\\:channelId, channelId').textContent,
+        //thumbnail: entry.querySelector('media\\:thumbnail, thumbnail').getAttribute('url'),
+        //description: entry.querySelector('media\\:description, description').textContent
+      
+
+        xmlDoc.querySelectorAll('entry').forEach(item => {
+            const tipo = item.querySelector('link').getAttribute('href').includes("/shorts/") ? "short" :
+                         item.querySelector('link').getAttribute('href').includes("live") ? "vivo" : "video";
             let color;
+            let estilo;
             switch (tipo){
                 case "short": estilo = "entrada_short";
                 break;
@@ -120,44 +163,84 @@
                 break;
                 default: estilo = "entrada_desconocida";
             }
-            return {
-              id: item.guid.replace("yt:video:", ""),
-              titulo: item.title,
-              fecha: item.pubDate,
-              descripcion: item.description,
-              miniatura: item.thumbnail,
+
+              // TEST EXTRACCIONES
+              // let id= item.querySelector('id').textContent.split(':')[2];
+              // console.log(id);
+              // let titulo= item.querySelector('title').textContent;
+              // console.log(titulo);
+              // let fecha= item.querySelector('published').textContent;
+              // console.log(fecha);
+              // let descripcion= item.querySelector('media\\:description, description').textContent;
+              // console.log(descripcion);
+              // let miniatura= item.querySelector('media\\:thumbnail, thumbnail').getAttribute('url');
+              // console.log(miniatura);
+              // console.log(tipo);
+              // console.log(estilo);
+            app_ultimosvideos.push({
+              id: item.querySelector('id').textContent.split(':')[2],
+              titulo: item.querySelector('title').textContent,
+              fecha: item.querySelector('published').textContent,
+              descripcion: item.querySelector('media\\:description, description').textContent,
+              miniatura: item.querySelector('media\\:thumbnail, thumbnail').getAttribute('url'),
               tipo: tipo,
               estilo: estilo
-            };
+            });
           });
 
+          console.log("tipo de var app_ultimosvideos = ", typeof app_ultimosvideos);
           console.log("app_ultimosvideos =", app_ultimosvideos);
           mostrarVideos();
       } catch (error) {
         console.error("Error al obtener videos:", error);
         alert("No se pudieron obtener los videos. Verifica el ID del canal.");
       }
+      // indico cuantos videos se encontraron
+      document.getElementById("videos-encontrados").innerText = `Total encontrados: ${app_ultimosvideos.length}`;
     }
 
     function mostrarVideos() {
           const contenedor = document.getElementById("videos");
           contenedor.innerHTML = "";
 
-          app_ultimosvideos.forEach(video => {
+          app_ultimosvideos.forEach( (video, index) => {
             const div = document.createElement("div");
               div.className = `video ${video.estilo}`;
 
             div.innerHTML = `
-              <img src="${video.miniatura}" alt="Miniatura del video" >
+              <img src="${video.miniatura.replace('hqdefault.jpg', 'maxresdefault.jpg')}" alt="Miniatura del video" >
               <h2>${video.titulo}</h2>
-              <p><strong>Fecha:</strong> ${video.fecha.split(' ')[0]}, (${video.fecha.split(' ')[1].slice(0, -3)} HS.)</p>
+              <p><strong>Fecha:</strong> ${video.fecha.split('T')[0]}, (${video.fecha.split('T')[1].slice(0, -8)} HS.)</p>
+              <pre class="vid_descripcion" onclick="switch_desplegar(this)">${video.descripcion}</pre>
               <p><strong>Tipo:</strong> ${video.tipo}</p>
               <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank">Ver en YouTube</a>
+              <div id="pie-item">
+                <div id="copiar-info" class="copiar_boton" onclick="copiar(${index})">COPIAR</div>
+              </div>
             `;
 
             contenedor.appendChild(div);
           });
         }
+
+    async function copiar(index){
+      let salto = '\n';
+      let string_a_copiar = app_ultimosvideos[index].titulo + salto + salto + app_ultimosvideos[index].descripcion + salto + salto + "Disponible !" + salto + salto + "ver 👉 " + "https://www.youtube.com/watch?v=" + app_ultimosvideos[index].id
+      navigator.clipboard.writeText(string_a_copiar);
+      alert("Info copiada! se descargará la imagen correspondiendte");
+
+      // preparar imagen pa descargar
+      const respuesta = await fetch(app_ultimosvideos[index].miniatura.replace('hqdefault.jpg', 'maxresdefault.jpg'));
+      const blob = await respuesta.blob();
+      const urlTemporal = URL.createObjectURL(blob);
+      // descargo imagen
+      const enlace = document.createElement('a');
+      enlace.href = urlTemporal;
+      enlace.download = "imagen_video.jpg";
+      enlace.click();
+
+      URL.revokeObjectRUL(urlTemporal);
+    }
 
     // Carga automática con canal por defecto
     //window.onload = buscarVideos;
