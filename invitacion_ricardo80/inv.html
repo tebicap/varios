@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=portrait">
+    <title>Invitación Virtual</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="radial-bg">
+        <div class="container">
+            <img id="overlay" src="imagen_default.png" alt="Imagen de invitación">
+            <h1 id="title">¡CUMPLEAÑOS!</h1>
+            <p id="name">Hola!</p>
+            <p id="description">Te invitamos a celebrar junto a Ricardo sus 80 años.<br>¡Esperamos verte!</p>
+            <div class="container-fecha-lugar">
+                <p id="date">Fecha: Jueves 18 de Septiembre de 2025</p>
+                <hr>
+                <p id="hora">20 Hs.</p>
+                <hr>
+                <p id="lugar">En calle Soldado Hector Caballero 8354; Pablo Podestá</p>
+                <p id="mapa">🗺️<a class="mapa_link" href="https://www.google.com.ar/maps/place/Soldado+H%C3%A9ctor+Caballero+8354,+B1657+Pablo+Podesta,+Provincia+de+Buenos+Aires/@-34.5773309,-58.6049214,17z/data=!3m1!4b1!4m5!3m4!1s0x95bcb975b838e2fb:0xf22c86bddce34345!8m2!3d-34.5773353!4d-58.6023465?hl=es&entry=ttu&g_ep=EgoyMDI1MDgyNS4wIKXMDSoASAFQAw%3D%3D" target="_blank">Ver mapa</a></p>
+            </div>
+            <p id="chosen" style="display: none;">Opción elegida: <span id="option"></span></p>
+            <div class="buttons">
+                <button class="confirmar" onclick="handleButton('1')">Confirmar Asistencia</button>
+                <button class="posponer" onclick="handleButton('2')">Confirmar Más Adelante</button>
+                <button class="rechazar" onclick="handleButton('3')">Rechazar Asistencia</button>
+            </div>
+            <p id="thanks" style="display: none;">¡Gracias por tu respuesta! Puedes cambiar tu opción más adelante.</p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
