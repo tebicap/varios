@@ -5,16 +5,9 @@ window.onload = function() {
         document.getElementById('name').textContent = `Hola, ${nbr}`;
     }
 
-
-    //compruebo si en localStorage hay variable vieja que no es diccionario y la elimino (era del sistema viejo)
-    if (typeof JSON.parse(localStorage.getItem('invitacion_ric_80_chosenOption')) === 'number'){
-        localStorage.removeItem('invitacion_ric_80_chosenOption');
-    }
-    //obtengo diccionario o creo uno nuevo
-    const option = JSON.parse(localStorage.getItem('invitacion_ric_80_chosenOption') || '{}');
-    console.log(option);
-    if (option[nbr]) {
-        document.getElementById('option').textContent = getOptionText(option[nbr]);
+    const option = localStorage.getItem('invitacion_ric_80_chosenOption');
+    if (option) {
+        document.getElementById('option').textContent = getOptionText(option);
         document.getElementById('chosen').style.display = 'block';
         changeImage(option);
     } else {
@@ -40,11 +33,7 @@ function changeImage(opt) {
 
 function handleButton(opt) {
     let option_text = getOptionText(opt);
-    const urlParams = new URLSearchParams(window.location.search);
-    const nbr = urlParams.get('nbr');
-    const option = JSON.parse(localStorage.getItem('invitacion_ric_80_chosenOption') || '{}');
-    option[nbr] = opt; //actualizo diccionario con elección de usuario
-    localStorage.setItem('invitacion_ric_80_chosenOption', JSON.stringify(option));
+    localStorage.setItem('invitacion_ric_80_chosenOption', opt);
     document.getElementById('option').textContent = getOptionText(opt);
     // document.getElementById('chosen').innerText = `Elegiste: ${option_text}`;
     document.getElementById('chosen').style.display = 'block';
