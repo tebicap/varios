@@ -18,15 +18,18 @@ body {
     padding: 0px;
     height: 100%;
     width: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: scroll;
     background-image: radial-gradient(circle, rgba(120, 174, 255, 0.37) 0%, rgb(255 255 255 / 58%) 50%, rgb(0 17 69 / 72%) 100%);
 }
 
 .container {
+    margin: 0 auto;
     position: relative;
     text-align: center;
     max-width: 90%;
     padding: 20px;
+    max-width: 800px;
 }
 #description{
     font-size: 1.7rem;
