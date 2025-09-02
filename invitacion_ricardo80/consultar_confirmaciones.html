@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Telegram Updates Viewer</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:1rem;
+  }
+  h1 { text-align:center; color:#333; font-size:1.4rem; }
+  button {
+    display:block; margin:0.5rem auto 1rem; padding:0.6rem 1rem;
+    border:none; border-radius:8px; background:#1a73e8; color:#fff;
+    font-size:1rem;
+  }
+  #messages {
+    display:grid; gap:1rem;
+    max-width:600px; margin:0 auto;
+  }
+  .msg {
+    background:white; padding:1rem 1.2rem; border-radius:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+    word-wrap:break-word;
+  }
+  .from { font-weight:600; color:#1a73e8; }
+  .chat { font-size:0.85rem; color:#555; margin-top:0.2rem; }
+  .text { margin-top:0.6rem; line-height:1.4; color:#222; }
+</style>
+</head>
+<body>
+  <h1>Telegram Updates</h1>
+  <button onclick="loadUpdates()">🔄 Actualizar</button>
+  <div id="messages"></div>
+
+<script>
+const BOT_TOKEN = "8405616800:AAFoVD3Xrgt7NKN1hTlVzQXOkug60bAGsQo"; // 🔴 pon tu token aquí
+
+async function loadUpdates() {
+  const container = document.getElementById("messages");
+  container.innerHTML = "<p>Cargando...</p>";
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`);
+    const data = await res.json();
+    if (!data.ok) throw new Error("Respuesta no válida de la API");
+
+    container.innerHTML = "";
+    data.result.forEach(upd => {
+      const msg = upd.message;
+      if (!msg) return; // filtramos solo "message"
+
+      const from = msg.from ?
+        `${msg.from.first_name||''} ${msg.from.last_name||''} (@${msg.from.username||'sin_username'})`
+        : "desconocido";
+
+      const chat = msg.chat?.title || msg.chat?.username || msg.chat?.id;
+
+      // Texto real: text, caption u otro tipo de contenido
+      let content = msg.text || msg.caption || "";
+      if (!content) {
+        if (msg.sticker) content = "[sticker]";
+        else if (msg.photo) content = "[foto]";
+        else if (msg.document) content = "[documento]";
+        else if (msg.migrate_to_chat_id) content = "[grupo migrado]";
+        else content = "(sin texto)";
+      }
+
+      const div = document.createElement("div");
+      div.className = "msg";
+      div.innerHTML = `
+        <div class="from">👤 ${from}</div>
+        <div class="chat">💬 Chat: ${chat}</div>
+        <div class="text">${content}</div>
+      `;
+      container.appendChild(div);
+    });
+
+    if (!container.innerHTML) container.innerHTML = "<p>No hay mensajes en result.</p>";
+  } catch (err) {
+    container.innerHTML = `<p style="color:red">Error: ${err.message}</p>`;
+  }
+}
+</script>
+</body>
+</html>

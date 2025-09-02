@@ -26,7 +26,7 @@ function changeImage(opt) {
     const img = document.getElementById('overlay');
     img.style.opacity = 0;
     setTimeout(() => {
-        img.src = `imagen_boton1.png`; //`imagen_boton${opt}.png`
+        img.src = `imagen_default.webp`; //`imagen_boton${opt}.png`
         img.style.opacity = 1;
     }, 500);
 }
@@ -50,7 +50,7 @@ function sendToTelegram(opt) {
     const nbr = urlParams.get('nbr') || 'Desconocido';
     const message = `Usuario ${nbr} ha elegido: ${option_text}`;
     const botToken = '8405616800:AAFoVD3Xrgt7NKN1hTlVzQXOkug60bAGsQo'; // Reemplaza con tu token de bot de Telegram
-    const chatId = '-4904718044'; // Reemplaza con tu chat ID de Telegram
+    const chatId = '-1003096284511'; // Reemplaza con tu chat ID de Telegram 3096284511
     fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`)
         .then(response => response.json())
         .then(data => console.log('Mensaje enviado a Telegram:', data))
