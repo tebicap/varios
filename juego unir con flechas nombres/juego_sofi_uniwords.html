@@ -1,0 +1,404 @@
+<!-- 
+  Credit: Esteban Capella
+  Date: 2024
+  Description: Juego creado para el grupo Aprendizaje Hebreo Compartido - Español
+  -->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>➡️</text></svg>">
+    <title>Une Palabras</title>
+    <style>
+        body {
+            background-image: url('textura_diamantes.png');
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            transition: background-color 0.4s ease;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            width: 80%;
+            max-width: 800px;
+        }
+        .columns {
+            display: flex;
+            justify-content: space-between;
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1;
+            width: 30%;
+        }
+        .column-title {
+            color: #999;
+            margin-bottom: 10px;
+            font-weight: normal;
+            text-align: center;
+            width: 100%;
+        }
+        .word {
+            margin: 10px 0;
+            padding: 15px 3px 15px 3px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: white;
+            text-align: center;
+            direction: rtl; /* setea el texto de derecha a izquierda, para que se vean bien las comas al final de una palabra*/
+        }
+        .palabras{
+            max-height: 77px;
+            margin: 0px 0px 0px 0px;
+            padding: 15px 3px 15px 3px;
+            border: none;
+        }
+        @media (max-height: 600px) {
+            h1{
+                margin-top: 10px;
+            }
+            .word{
+                margin: 4px 0;
+            }
+            .game-container{
+                padding-bottom: 8px;
+            }
+        }
+        .selected {
+            background-color: #e0e0e0;
+        }
+        .correct {
+            /* background-color: #90EE90; */
+            background-color: #beffbe;
+        }
+        #message_container {
+            display: none; /* estado inicial invisible, luego cambia a display: flex */
+            width: 98%;
+            justify-content: center;
+            position: absolute;
+            margin-left: -16px;
+            bottom: 0px;
+            z-index: 99999;
+        }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+            /* width: 100%; */
+            left: 0;
+            background-color: #FFD700;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            animation: pulse 1s infinite;
+        }
+        #connectionLines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+        }
+        h1 {
+            align-self: center;
+            font-size: 24px;
+            color: #2f4757;
+            text-shadow: 0px 1px 3px #ffffffc2;
+            margin-bottom: 0px;
+            text-align: center;
+        }
+        .encabezado {
+            position: fixed;
+            align-self: center;
+            top: 1vw;
+            color: #2f4757;
+            max-width: 85vw;
+        }
+        .edicion{
+            margin-top: 0px;
+            align-self: center;
+            color: #2f4757;
+            text-align: center;
+        }
+        .creditos{
+            position: fixed;
+            bottom: 10px;
+            text-align: center;
+            font-size: 13px;
+            color: #999;
+        }
+        .boton-reiniciar{
+            background-color: white;
+            border: 1px solid #ff005a;
+            border-radius: 3px;
+            color: #ff005a;
+            margin-top: 7px;
+            padding: 3px 5px 2px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="encabezado">
+            <h1>Une Con Flechas</h1>
+            <p class="edicion">relaciona los nombres</p>
+        </div>
+        <div class="columns">
+            <div class="column" id="spanish">
+                <div class="column-title">Nombres</div>
+            </div>
+            <div class="column" id="hebrew">
+                <div class="column-title">Mes</div>
+            </div>
+            <div class="column" id="phonetic">
+                <div class="column-title">Día</div>
+            </div>
+        </div>
+        <svg id="connectionLines"></svg>
+        <div id="message_container">
+            <div id="message"></div>
+        </div>
+        <div class="footer">Juego hecho por Sofía y Esteban</div>
+    </div>
+
+    <div class="creditos">Idea diseño y programación: Esteban Capella</div>
+
+    <script>
+        const allWords = [
+              { personaje: "Sofía", vivienda: "Enero", comida: "5" },
+              { personaje: "Lian", vivienda: "Enero", comida: "18" },
+              { personaje: "Esteban", vivienda: "Enero", comida: "27" },
+              { personaje: "Abigail", vivienda: "Febrero", comida: "19" },
+              { personaje: "Miqueas", vivienda: "Marzo", comida: "12" },
+              { personaje: "Samuel", vivienda: "Mayo", comida: "2" },
+              { personaje: "Juan Manuel", vivienda: "Mayo", comida: "4" },
+              { personaje: "Sergio", vivienda: "Junio", comida: "22" },
+              { personaje: "Marina", vivienda: "Julio", comida: "17" },
+              { personaje: "Jazmín", vivienda: "Julio", comida: "29" },
+              { personaje: "Julieta", vivienda: "Septiembre", comida: "4" },
+              { personaje: "Ricardo", vivienda: "Septiembre", comida: "18" },
+              { personaje: "Rosana", vivienda: "Septiembre", comida: "27" },
+              { personaje: "Paola", vivienda: "Octubre", comida: "13" },
+              { personaje: "Julián", vivienda: "Noviembre", comida: "26" },
+              { personaje: "Andrea", vivienda: "diciembre", comida: "27" }
+        ];
+
+        let words = [];
+        const columns = {
+            personaje: document.getElementById("spanish"),
+            vivienda: document.getElementById("hebrew"),
+            comida: document.getElementById("phonetic")
+        };
+
+        let selectedWords = {};
+        let correctPairs = 0;
+        const connectionLines = document.getElementById("connectionLines");
+        let current_random_color = "";
+        let color_linea_juego = "no";
+
+        //para puntaje
+        let puntaje = 0;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function selectRandomWords() {
+            shuffleArray(allWords);
+            words = allWords.slice(0, Math.min(6, allWords.length));
+        }
+
+        function createWords() {
+            selectRandomWords();
+            for (const column in columns) {
+                const shuffledWords = [...words];
+                shuffleArray(shuffledWords);
+                shuffledWords.forEach(word => {
+                    const wordElement = document.createElement("div");
+                    wordElement.classList.add("word");
+                    //wordElement.textContent = word[column]; //imagen aqui
+                    wordElement.innerHTML = `<span class="palabras">${word[column]}</span>`;
+                    wordElement.addEventListener("click", () => selectWord(wordElement, column, word));
+                    columns[column].appendChild(wordElement);
+                });
+            }
+        }
+
+        function selectWord(element, column, word) {
+            if (element.classList.contains("correct")) return;
+
+            if (selectedWords[column]) {
+                selectedWords[column].element.classList.remove("selected");
+            }
+
+            element.classList.add("selected");
+            selectedWords[column] = {element, word};
+
+            drawConnections();
+            
+            if (Object.keys(selectedWords).length === 3) {
+                checkWords();
+            }
+        }
+
+        function drawConnections() {
+            connectionLines.querySelectorAll('line[data-temp="true"]').forEach(line => {
+                line.remove();
+            });
+
+            const columnOrder = ["personaje", "vivienda", "comida"];
+            const color = getRandomColor();
+            current_random_color = color;
+            if (color_linea_juego == "no"){
+                color_linea_juego = color;
+            }
+
+            for (let i = 0; i < columnOrder.length - 1; i++) {
+                const startColumn = columnOrder[i];
+                const endColumn = columnOrder[i + 1];
+
+                if (selectedWords[startColumn] && selectedWords[endColumn]) {
+                    const start = selectedWords[startColumn].element.getBoundingClientRect();
+                    const end = selectedWords[endColumn].element.getBoundingClientRect();
+                    const containerRect = document.querySelector('.game-container').getBoundingClientRect();
+
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", start.right - containerRect.left -1);
+                    line.setAttribute("y1", start.top + start.height / 2 - containerRect.top);
+                    line.setAttribute("x2", end.left - containerRect.left +1);
+                    line.setAttribute("y2", end.top + end.height / 2 - containerRect.top);
+                    line.setAttribute("stroke", color_linea_juego);
+                    line.setAttribute("stroke-width", "4");
+                    line.setAttribute("data-temp", "true");
+                    connectionLines.appendChild(line);
+                }
+            }
+        }
+
+        function getRandomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
+        }
+
+        function checkWords() {
+            const selectedWordsArray = Object.values(selectedWords);
+            if (selectedWordsArray[0].word === selectedWordsArray[1].word && selectedWordsArray[1].word === selectedWordsArray[2].word) {
+                selectedWordsArray.forEach(w => {
+                    w.element.classList.remove("selected");
+                    w.element.classList.add("correct");
+                    w.element.style.border = "3px solid grey";
+                    w.element.style.borderColor=color_linea_juego;
+                });
+
+                correctPairs++;
+
+                    color_linea_juego = "no";
+                
+                <!-- if (color_linea_juego == "no"){ //defino color para este juego -->
+                <!--     color_linea_juego = current_random_color; -->
+                <!-- } -->
+                
+                connectionLines.querySelectorAll('line[data-temp="true"]').forEach(line => {
+                    line.removeAttribute("data-temp");
+                });
+                
+                puntaje++; //subo puntaje del jugador un punto
+                console.log("nuevo puntaje: ", puntaje);
+                reproducir_sonidos("bien");
+
+                if (correctPairs === words.length) {
+                    reproducir_sonidos("final_juego");
+                    let puntajeX10 = 10 * puntaje;
+                    document.getElementById("message").innerHTML = "¡Felicidades! Has completado el juego correctamente.<br>Tu puntaje es: "+puntajeX10+"<br><button class='boton-reiniciar' onclick='location.reload()'>REINICIAR</button>";
+                    document.getElementById("message_container").style.display = "flex";
+                    startBackgroundAnimation();
+                }
+            } else {
+                selectedWordsArray.forEach(w => {
+                    w.element.classList.remove("selected");
+                });
+                connectionLines.querySelectorAll('line[data-temp="true"]').forEach(line => {
+                    line.remove();
+                });
+                color_linea_juego = "no";
+
+                puntaje--; //bajo puntaje del jugador un punto
+                console.log("nuevo puntaje: ", puntaje);
+                reproducir_sonidos("mal");
+            }
+            selectedWords = {};
+        }
+        function startBackgroundAnimation() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
+            let index = 0;
+            setInterval(() => {
+                document.body.style.backgroundColor = colors[index];
+                index = (index + 1) % colors.length;
+            }, 400);
+            document.body.style.backgroundImage = "none";
+        }
+
+        createWords();
+
+        //reproduce sonidos "bieen" o "noooo"
+        let reproducir_sonidos = function(bien_o_mal){
+            //si acierta una cadena
+            if (bien_o_mal == "bien"){
+                // cargo el archivo de audio
+                var audio = new Audio('bieeen.mp3');
+                audio.load();
+                audio.play();
+            }
+
+            //si falla en una cadena
+            if (bien_o_mal == "mal"){
+              // Reproduzco
+              var audio = new Audio('noooo.mp3');
+              audio.play();
+              audio.play();
+            }
+
+            //si termnina el juego
+            if (bien_o_mal == "final_juego"){
+              // Reproduzco
+
+              var audio = new Audio('bravo.mp3');
+              audio.play();
+              audio.play();
+
+              startBackgroundAnimation();
+            }
+        }
+    </script>
+</body>
+</html>
