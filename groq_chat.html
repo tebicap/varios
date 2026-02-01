@@ -16,6 +16,7 @@
             --neon-pink: #ff00ff;
             --neon-purple: #bc13fe;
             --neon-blue: #0066ff;
+            --neon-yellow: #ffff00;
             --text-primary: #ffffff;
             --text-secondary: #8892b0;
             --glass-bg: rgba(18, 18, 26, 0.9);
@@ -51,7 +52,6 @@
             width: 100%;
         }
 
-        /* Grid animado solo en desktop */
         @media (min-width: 768px) {
             body::before {
                 content: '';
@@ -249,7 +249,7 @@
             border-radius: 20px;
             color: var(--neon-cyan);
             font-family: 'Orbitron', monospace;
-            font-size: 0.65rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -258,6 +258,7 @@
             text-transform: uppercase;
             flex-shrink: 0;
             transform: translateZ(0);
+            margin-right: 10px;
         }
 
         .model-switch.compound {
@@ -436,7 +437,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* GLOW RESTAURADO en mensajes */
         .message.user {
             background: linear-gradient(135deg, rgba(0, 243, 255, 0.15), rgba(0, 102, 255, 0.15));
             border: 1px solid rgba(0, 243, 255, 0.4);
@@ -541,6 +541,7 @@
             gap: 0.5rem;
             align-items: flex-end;
             flex-shrink: 0;
+            position: relative;
         }
 
         .message-input {
@@ -588,6 +589,65 @@
         .send-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+
+        /* Switch de contexto flotante */
+        .context-switch {
+            position: absolute;
+            right: 14px;
+            bottom: calc(100% + 8px);
+            padding: 0.5rem 0.8rem;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            z-index: 5;
+        }
+
+        .context-switch.ctx-mode {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        .context-switch.solo-mode {
+            border-color: rgba(255, 255, 0, 0.5);
+            color: var(--neon-yellow);
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.3);
+        }
+
+        .context-switch-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.8;
+        }
+
+        /* Estadísticas de tokens - sin fondo, a 30px */
+        .token-stats {
+            position: absolute;
+            left: 20px;
+            bottom: calc(100% + 2px);
+            color: var(--neon-purple);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            z-index: 5;
         }
 
         @media (min-width: 768px) {
@@ -753,6 +813,11 @@
         </div>
 
         <div class="input-container">
+            <!-- Estadísticas de tokens (izquierda) -->
+            <div id="tokenStats" class="token-stats">
+                <span id="tokenStatsText">--</span>
+            </div>
+
             <textarea 
                 id="messageInput" 
                 class="message-input" 
@@ -763,6 +828,12 @@
             <button id="sendBtn" class="send-btn" onclick="sendMessage()">
                 ➤
             </button>
+            
+            <!-- Switch de contexto (derecha) -->
+            <button id="contextSwitch" class="context-switch" onclick="toggleContextMode()">
+                <div class="context-switch-indicator"></div>
+                <span id="contextSwitchText">CTX</span>
+            </button>
         </div>
     </div>
 
@@ -770,6 +841,7 @@
         const STORAGE_KEY = 'chatgroq_data';
         const API_KEY_STORAGE = 'chatgroq_apikey';
         const MODEL_STORAGE = 'chatgroq_model';
+        const CONTEXT_MODE_STORAGE = 'chatgroq_context_mode';
         const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
         
         const MODELS = {
@@ -778,6 +850,7 @@
         };
         
         let currentModel = localStorage.getItem(MODEL_STORAGE) || 'moonshotai/kimi-k2-instruct-0905';
+        let isContextMode = localStorage.getItem(CONTEXT_MODE_STORAGE) !== 'false';
         let currentData = { activeChatId: null, chats: {} };
         let currentChatId = null;
         let isStreaming = false;
@@ -786,6 +859,7 @@
             checkApiKey();
             loadData();
             updateModelSwitch();
+            updateContextSwitch();
             
             const textarea = document.getElementById('messageInput');
             textarea.addEventListener('input', function() {
@@ -806,6 +880,25 @@
             const btn = document.getElementById('modelSwitch');
             btn.textContent = MODELS[currentModel].shortName;
             btn.classList.toggle('compound', currentModel === 'groq/compound');
+        }
+
+        function toggleContextMode() {
+            isContextMode = !isContextMode;
+            localStorage.setItem(CONTEXT_MODE_STORAGE, isContextMode);
+            updateContextSwitch();
+        }
+
+        function updateContextSwitch() {
+            const btn = document.getElementById('contextSwitch');
+            const text = document.getElementById('contextSwitchText');
+            
+            if (isContextMode) {
+                btn.className = 'context-switch ctx-mode';
+                text.textContent = 'CTX';
+            } else {
+                btn.className = 'context-switch solo-mode';
+                text.textContent = 'SOLO';
+            }
         }
 
         function checkApiKey() {
@@ -983,6 +1076,14 @@
             scrollToBottom();
         }
 
+        function updateTokenStats(stats) {
+            const textEl = document.getElementById('tokenStatsText');
+            
+            if (stats && (stats.total > 0 || stats.prompt > 0)) {
+                textEl.textContent = `${stats.prompt}→${stats.completion}=${stats.total}`;
+            }
+        }
+
         async function sendMessage() {
             if (isStreaming) return;
             
@@ -1015,6 +1116,8 @@
             isStreaming = true;
             document.getElementById('sendBtn').disabled = true;
             
+            document.getElementById('tokenStatsText').textContent = '--';
+            
             const container = document.getElementById('chatContainer');
             const loadingId = 'loading-' + Date.now();
             
@@ -1033,6 +1136,14 @@
             
             try {
                 const apiKey = localStorage.getItem(API_KEY_STORAGE);
+                
+                let messagesToSend;
+                if (isContextMode) {
+                    messagesToSend = chat.messages.map(m => ({ role: m.role, content: m.content }));
+                } else {
+                    messagesToSend = [{ role: 'user', content: content }];
+                }
+                
                 const response = await fetch(GROQ_API_URL, {
                     method: 'POST',
                     headers: {
@@ -1041,7 +1152,7 @@
                     },
                     body: JSON.stringify({
                         model: currentModel,
-                        messages: chat.messages.map(m => ({ role: m.role, content: m.content })),
+                        messages: messagesToSend,
                         temperature: 0.6,
                         max_tokens: 4096,
                         stream: true
@@ -1068,6 +1179,7 @@
                 const decoder = new TextDecoder();
                 let fullContent = '';
                 let msgElement = document.getElementById(msgId);
+                let tokenStats = { prompt: 0, completion: 0, total: 0 };
                 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -1084,6 +1196,22 @@
                         
                         try {
                             const parsed = JSON.parse(data);
+                            
+                            // Log crudo del output
+                            //console.log('API Response Chunk:', parsed);
+                            
+                            if (parsed.usage) {
+                                tokenStats.prompt = parsed.usage.prompt_tokens || 0;
+                                tokenStats.completion = parsed.usage.completion_tokens || 0;
+                                tokenStats.total = parsed.usage.total_tokens || 0;
+                            }
+                            
+                            if (parsed.choices && parsed.choices[0] && parsed.choices[0].finish_reason === 'stop' && parsed.usage) {
+                                tokenStats.prompt = parsed.usage.prompt_tokens || 0;
+                                tokenStats.completion = parsed.usage.completion_tokens || 0;
+                                tokenStats.total = parsed.usage.total_tokens || 0;
+                            }
+                            
                             const text = parsed.choices[0]?.delta?.content || '';
                             if (text) {
                                 fullContent += text;
@@ -1096,7 +1224,17 @@
                     }
                 }
                 
-                if (msgElement) msgElement.innerHTML = formatMessage(fullContent);
+                if (!fullContent || fullContent.trim() === '') {
+                    fullContent = 'No se recibió mensaje';
+                    if (msgElement) {
+                        msgElement.innerHTML = formatMessage(fullContent);
+                        msgElement.style.color = '#ff6666';
+                        msgElement.style.fontStyle = 'italic';
+                    }
+                } else {
+                    if (msgElement) msgElement.innerHTML = formatMessage(fullContent);
+                    updateTokenStats(tokenStats);
+                }
                 
                 chat.messages.push({
                     role: 'assistant',
