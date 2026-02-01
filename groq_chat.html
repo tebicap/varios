@@ -29,7 +29,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Optimización GPU global */
         html {
             scroll-behavior: smooth;
             -webkit-font-smoothing: antialiased;
@@ -44,10 +43,12 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            position: fixed; /* Previene bounce en iOS */
+            position: fixed;
             width: 100%;
-            /* Fondo simplificado para móvil por defecto */
-            background-image: radial-gradient(circle at 50% 0%, rgba(188, 19, 254, 0.1) 0%, transparent 50%);
+            /* Fondo restaurado sin animación */
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(188, 19, 254, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 243, 255, 0.1) 0%, transparent 50%);
         }
 
         /* Grid animado solo en desktop */
@@ -82,6 +83,8 @@
             padding: 2rem;
             z-index: 100;
             will-change: opacity;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.1) 0%, transparent 70%);
         }
 
         .setup-screen.hidden {
@@ -101,7 +104,6 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            /* Simplificado para móvil, sin animación pesada */
         }
 
         @media (min-width: 768px) {
@@ -138,7 +140,7 @@
             border: 1px solid var(--glass-border);
             border-radius: 12px;
             color: var(--text-primary);
-            font-size: 16px; /* Evita zoom en iOS */
+            font-size: 16px;
             outline: none;
             transition: border-color 0.2s;
             -webkit-appearance: none;
@@ -161,7 +163,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             font-family: 'Orbitron', monospace;
-            transform: translateZ(0); /* GPU acceleration */
+            transform: translateZ(0);
             will-change: transform;
         }
 
@@ -182,7 +184,6 @@
             background: rgba(255, 51, 102, 0.1);
         }
 
-        /* Header optimizado */
         .header {
             display: flex;
             align-items: center;
@@ -192,7 +193,6 @@
             border-bottom: 1px solid var(--glass-border);
             z-index: 10;
             flex-shrink: 0;
-            /* Sin backdrop-filter en móvil (pesado) */
         }
 
         @media (min-width: 768px) {
@@ -265,7 +265,6 @@
             border-color: rgba(255, 0, 255, 0.3);
         }
 
-        /* Sidebar optimizado */
         .sidebar {
             position: fixed;
             top: 0;
@@ -281,7 +280,6 @@
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--glass-border);
-            /* Sin sombra difusa en móvil (pesada) */
         }
 
         @media (min-width: 768px) {
@@ -323,7 +321,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 0.5rem;
-            -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+            -webkit-overflow-scrolling: touch;
         }
 
         .chat-item {
@@ -393,7 +391,6 @@
             background: rgba(0, 0, 0, 0.3);
         }
 
-        /* Chat container optimizado */
         .chat-container {
             flex: 1;
             overflow-y: auto;
@@ -404,10 +401,10 @@
             gap: 0.25rem;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: contain; /* Previene pull-to-refresh */
+            overscroll-behavior-y: contain;
             will-change: transform;
-            transform: translateZ(0); /* Fuerza capa GPU */
-            contain: layout style paint; /* Aislamiento de renderizado */
+            transform: translateZ(0);
+            contain: layout style paint;
         }
 
         .message-wrapper {
@@ -431,7 +428,6 @@
             line-height: 1.5;
             word-wrap: break-word;
             font-size: 0.95rem;
-            /* Animación simplificada en móvil */
             animation: fadeIn 0.2s ease-out;
         }
 
@@ -440,18 +436,22 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Efectos neon simplificados en móvil */
+        /* GLOW RESTAURADO en mensajes */
         .message.user {
-            background: rgba(0, 243, 255, 0.12);
-            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.15), rgba(0, 102, 255, 0.15));
+            border: 1px solid rgba(0, 243, 255, 0.4);
             color: var(--text-primary);
             border-bottom-right-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2),
+                        inset 0 0 20px rgba(0, 243, 255, 0.05);
         }
 
         .message.assistant {
-            background: rgba(188, 19, 254, 0.08);
-            border: 1px solid rgba(188, 19, 254, 0.25);
+            background: rgba(188, 19, 254, 0.1);
+            border: 1px solid rgba(188, 19, 254, 0.3);
             border-bottom-left-radius: 4px;
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.15),
+                        inset 0 0 20px rgba(188, 19, 254, 0.05);
         }
 
         .message.loading {
@@ -489,6 +489,7 @@
         }
 
         .message-wrapper.user .message-model {
+            text-align: right;
             margin-right: 0.5rem;
             margin-left: 0;
             color: var(--neon-cyan);
@@ -532,7 +533,6 @@
             font-size: 1.2rem;
         }
 
-        /* Input area */
         .input-container {
             padding: 0.75rem;
             background: var(--bg-secondary);
@@ -550,7 +550,7 @@
             border-radius: 20px;
             padding: 0.625rem 1rem;
             color: var(--text-primary);
-            font-size: 16px; /* Previene zoom iOS */
+            font-size: 16px;
             outline: none;
             resize: none;
             max-height: 100px;
@@ -590,7 +590,6 @@
             cursor: not-allowed;
         }
 
-        /* Responsive Desktop */
         @media (min-width: 768px) {
             body {
                 flex-direction: row;
@@ -601,7 +600,6 @@
                 position: relative;
                 transform: none;
                 width: 280px;
-                box-shadow: none;
             }
 
             .menu-btn {
@@ -616,17 +614,22 @@
                 max-width: 75%;
                 gap: 0.25rem;
             }
+        }
 
-            .message {
-                box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+        @media (max-width: 767px) {
+            .chat-container {
+                gap: 0.25rem;
             }
             
-            .message.assistant {
-                box-shadow: 0 0 20px rgba(188, 19, 254, 0.1);
+            .message-wrapper {
+                gap: 0.1rem;
+            }
+            
+            .message-model {
+                margin-top: 0px;
             }
         }
 
-        /* Scrollbar optimizado */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -640,7 +643,6 @@
             border-radius: 2px;
         }
 
-        /* Markdown simplificado */
         .message pre {
             background: rgba(0, 0, 0, 0.6);
             padding: 0.5rem;
@@ -677,7 +679,6 @@
             font-family: 'Orbitron', monospace;
         }
 
-        /* Optimizaciones táctiles */
         @media (hover: none) and (pointer: coarse) {
             .chat-item:hover {
                 transform: none;
@@ -747,7 +748,7 @@
             <div class="empty-state">
                 <div class="empty-icon">⚡</div>
                 <h3>SISTEMA LISTO</h3>
-                <p style="font-size: 0.85rem; opacity: 0.8;">Inicia conversación</p>
+                <p style="font-size: 0.85rem;">Inicia conversación</p>
             </div>
         </div>
 
@@ -781,7 +782,6 @@
         let currentChatId = null;
         let isStreaming = false;
 
-        // Optimización: Passive listeners para scroll
         window.onload = function() {
             checkApiKey();
             loadData();
@@ -927,7 +927,6 @@
                 return;
             }
             
-            // Optimización: Usar fragmento para DOM
             const html = chats.map(chat => `
                 <div class="chat-item ${chat.id === currentChatId ? 'active' : ''}" onclick="loadChat('${chat.id}')">
                     <div class="chat-icon">◉</div>
@@ -968,7 +967,6 @@
                 return;
             }
             
-            // Optimización: Construir string y un solo innerHTML
             const html = messages.map(msg => {
                 const modelName = msg.model ? MODELS[msg.model]?.shortName || '' : '';
                 
@@ -1020,7 +1018,6 @@
             const container = document.getElementById('chatContainer');
             const loadingId = 'loading-' + Date.now();
             
-            // Insertar loading
             const loadingHtml = `
                 <div id="${loadingId}" class="message-wrapper assistant">
                     <div class="message loading">
@@ -1053,14 +1050,12 @@
                 
                 if (!response.ok) throw new Error(`Error ${response.status}`);
                 
-                // Eliminar loading
                 const loadingEl = document.getElementById(loadingId);
                 if (loadingEl) loadingEl.remove();
                 
                 const wrapperId = 'wrap-' + Date.now();
                 const msgId = 'msg-' + Date.now();
                 
-                // Insertar contenedor vacío
                 container.insertAdjacentHTML('beforeend', `
                     <div id="${wrapperId}" class="message-wrapper assistant">
                         <div id="${msgId}" class="message assistant"></div>
@@ -1092,19 +1087,15 @@
                             const text = parsed.choices[0]?.delta?.content || '';
                             if (text) {
                                 fullContent += text;
-                                if (msgElement) {
-                                    // Optimización: Limitar frecuencia de updates
-                                    if (fullContent.length % 10 === 0 || text.includes('\n')) {
-                                        msgElement.innerHTML = formatMessage(fullContent);
-                                        scrollToBottom();
-                                    }
+                                if (msgElement && (fullContent.length % 10 === 0 || text.includes('\n'))) {
+                                    msgElement.innerHTML = formatMessage(fullContent);
+                                    scrollToBottom();
                                 }
                             }
                         } catch (e) {}
                     }
                 }
                 
-                // Update final
                 if (msgElement) msgElement.innerHTML = formatMessage(fullContent);
                 
                 chat.messages.push({
@@ -1126,6 +1117,7 @@
                             <strong>Error de conexión</strong><br>
                             ${escapeHtml(error.message)}
                         </div>
+                        <div class="message-model">ERR</div>
                     </div>
                 `);
                 scrollToBottom();
@@ -1142,7 +1134,6 @@
             }
         }
 
-        // Optimización: Scroll con requestAnimationFrame
         let scrollTimeout;
         function scrollToBottom() {
             if (scrollTimeout) return;
@@ -1176,7 +1167,6 @@
 
         function formatMessage(text) {
             text = escapeHtml(text);
-            // Optimización: Regex compilados una vez (aunque aquí se recrean, el overhead es mínimo para cantidades moderadas)
             text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
             text = text.replace(/`([^`]+)`/g, '<code style="color: var(--neon-cyan);">$1</code>');
             text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -1196,13 +1186,10 @@
             return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }
         
-        // Optimización: Throttle para resize
         let resizeTimeout;
         window.addEventListener('resize', () => {
             if (resizeTimeout) clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                // Recalcular alturas si es necesario
-            }, 250);
+            resizeTimeout = setTimeout(() => {}, 250);
         }, { passive: true });
     </script>
 </body>
