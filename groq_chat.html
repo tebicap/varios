@@ -424,6 +424,13 @@
             align-items: flex-end;
         }
 
+        .message-wrapper.user .copy-btn {
+            filter: invert(1) contrast(2) brightness(2);
+        }
+        .message-wrapper.assistant .copy-btn {
+            filter: invert(1) contrast(2) brightness(2);
+        }
+
         .message {
             padding: 0.75rem 1rem;
             border-radius: 18px;
@@ -483,7 +490,7 @@
         .message-meta {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.8rem;
             margin-top: 0px;
             margin-left: 0.5rem;
             margin-right: 0.5rem;
@@ -491,6 +498,7 @@
 
         .message-wrapper.user .message-meta {
             justify-content: flex-end;
+            flex-direction: row-reverse;
         }
 
         .message-model {
@@ -503,10 +511,12 @@
 
         .message-wrapper.user .message-model {
             color: var(--neon-cyan);
+            margin-left: 10px;
         }
 
         .message-wrapper.assistant .message-model {
             color: var(--neon-purple);
+            margin-right: 10px;
         }
 
         .action-btn {
@@ -519,7 +529,6 @@
             opacity: 0.6;
             transition: all 0.2s;
             line-height: 1;
-            margin-left: 15px;
         }
 
         .action-btn:hover {
@@ -1165,19 +1174,20 @@
             }
             
             const html = messages.map((msg, index) => {
+                const actualIndex = msg.index !== undefined ? msg.index : index;
                 const modelName = msg.model ? MODELS[msg.model]?.shortName || '' : '';
                 
                 return `
-                <div id="msg-wrapper-${index}" class="message-wrapper ${msg.role}">
+                <div id="msg-wrapper-${actualIndex}" class="message-wrapper ${msg.role}">
                     <div class="message ${msg.role}">
                         ${formatMessage(msg.content)}
                     </div>
                     <div class="message-meta">
                         ${modelName ? `<span class="message-model">${modelName}</span>` : ''}
-                        <button class="action-btn copy-btn" onclick="copyMessage(${index})" title="Copiar mensaje">
+                        <button class="action-btn copy-btn" onclick="copyMessage(${actualIndex})" title="Copiar mensaje">
                             📋
                         </button>
-                        <button class="action-btn scroll-to-top-btn" onclick="scrollToMessage(${index})" title="Ir al inicio de este mensaje">
+                        <button class="action-btn scroll-to-top-btn" onclick="scrollToMessage(${actualIndex})" title="Ir al inicio de este mensaje">
                             ⬆
                         </button>
                     </div>
@@ -1270,12 +1280,16 @@
             if (!currentChatId) createNewChat();
             
             const chat = currentData.chats[currentChatId];
+
+            const nextUserIndex = chat.messages.length;
+            const nextAssistantIndex = chat.messages.length + 1;
             
             chat.messages.push({
                 role: 'user',
                 content: content,
                 timestamp: Date.now(),
-                model: currentModel
+                model: currentModel,
+                index: nextUserIndex
             });
             
             if (chat.messages.length === 1) {
@@ -1296,14 +1310,14 @@
             document.getElementById('tokenStatsText').textContent = '--';
             
             const container = document.getElementById('chatContainer');
-            const loadingId = 'loading-' + Date.now();
+            //const loadingId = 'loading-' + Date.now();
             
             // Guardar posición actual del scroll antes de agregar el loading
             const scrollBefore = container.scrollTop;
             const wasAtBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 50;
             
             const loadingHtml = `
-                <div id="${loadingId}" class="message-wrapper assistant">
+                <div id="msg-wrapper-${nextAssistantIndex}" class="message-wrapper assistant">
                     <div class="message loading">
                         <div class="dot"></div>
                         <div class="dot"></div>
@@ -1348,11 +1362,11 @@
                 
                 if (!response.ok) throw new Error(`Error ${response.status}`);
                 
-                const loadingEl = document.getElementById(loadingId);
+                const loadingEl = document.getElementById('msg-wrapper-' + nextAssistantIndex);
                 if (loadingEl) loadingEl.remove();
                 
-                const wrapperId = 'wrap-' + Date.now();
-                const msgId = 'msg-' + Date.now();
+                const wrapperId = 'msg-wrapper-' + nextAssistantIndex;
+                const msgId = 'msg-content-' + nextAssistantIndex;
                 const msgIndex = chat.messages.length; // Índice del mensaje que se está creando
                 
                 container.insertAdjacentHTML('beforeend', `
@@ -1449,24 +1463,15 @@
                     role: 'assistant',
                     content: fullContent,
                     timestamp: Date.now(),
-                    model: currentModel
+                    model: currentModel,
+                    index: nextAssistantIndex
                 });
-                
-                // Actualizar el onclick del botón copiar con el índice correcto
-                const wrapper = document.getElementById(wrapperId);
-                if (wrapper) {
-                    const copyBtn = wrapper.querySelector('.copy-btn');
-                    const scrollBtn = wrapper.querySelector('.scroll-to-top-btn');
-                    const actualIndex = chat.messages.length - 1;
-                    if (copyBtn) copyBtn.setAttribute('onclick', `copyMessage(${actualIndex})`);
-                    if (scrollBtn) scrollBtn.setAttribute('onclick', `scrollToMessage(${actualIndex})`);
-                }
                 
                 saveData();
                 
             } catch (error) {
                 console.error('Error:', error);
-                const loadingEl = document.getElementById(loadingId);
+                const loadingEl = document.getElementById('msg-wrapper-' + nextAssistantIndex);
                 if (loadingEl) loadingEl.remove();
                 
                 container.insertAdjacentHTML('beforeend', `
