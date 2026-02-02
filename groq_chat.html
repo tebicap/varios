@@ -416,6 +416,7 @@
             align-self: flex-start;
             will-change: transform;
             contain: layout;
+            position: relative;
         }
 
         .message-wrapper.user {
@@ -430,6 +431,7 @@
             word-wrap: break-word;
             font-size: 0.95rem;
             animation: fadeIn 0.2s ease-out;
+            position: relative;
         }
 
         @keyframes fadeIn {
@@ -478,25 +480,63 @@
             40% { transform: scale(1); }
         }
 
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0px;
+            margin-left: 0.5rem;
+            margin-right: 0.5rem;
+        }
+
+        .message-wrapper.user .message-meta {
+            justify-content: flex-end;
+        }
+
         .message-model {
             font-size: 0.6rem;
             color: var(--text-secondary);
             font-family: 'Orbitron', monospace;
             letter-spacing: 0.05em;
             opacity: 0.6;
-            margin-top: 0px;
-            margin-left: 0.5rem;
         }
 
         .message-wrapper.user .message-model {
-            text-align: right;
-            margin-right: 0.5rem;
-            margin-left: 0;
             color: var(--neon-cyan);
         }
 
         .message-wrapper.assistant .message-model {
             color: var(--neon-purple);
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 0.15rem;
+            opacity: 0.6;
+            transition: all 0.2s;
+            line-height: 1;
+            margin-left: 15px;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            color: var(--neon-cyan);
+        }
+
+        .copy-btn {
+            font-size: 0.8rem;
+        }
+
+        .scroll-to-top-btn {
+            font-size: 0.75rem;
+        }
+
+        .action-btn.copied {
+            color: #00ff88;
         }
 
         .empty-state {
@@ -685,7 +725,7 @@
                 gap: 0.1rem;
             }
             
-            .message-model {
+            .message-meta {
                 margin-top: 0px;
             }
         }
@@ -746,6 +786,38 @@
             .neon-btn:hover {
                 transform: none;
             }
+        }
+
+        /* Scroll to top floating button */
+        .global-scroll-top {
+            position: fixed;
+            bottom: 80px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--neon-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 20;
+            font-size: 1rem;
+        }
+
+        .global-scroll-top.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .global-scroll-top:hover {
+            background: rgba(0, 243, 255, 0.2);
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -812,6 +884,11 @@
             </div>
         </div>
 
+        <!-- Botón flotante para ir al inicio -->
+        <button id="globalScrollTop" class="global-scroll-top" onclick="scrollToTopOfChat()" title="Ir al inicio">
+            ⬆
+        </button>
+
         <div class="input-container">
             <!-- Estadísticas de tokens (izquierda) -->
             <div id="tokenStats" class="token-stats">
@@ -854,12 +931,16 @@
         let currentData = { activeChatId: null, chats: {} };
         let currentChatId = null;
         let isStreaming = false;
+        let isUserScrolling = false;
+        let userScrollTimeout;
+        let lastMessageElement = null;
 
         window.onload = function() {
             checkApiKey();
             loadData();
             updateModelSwitch();
             updateContextSwitch();
+            setupScrollListener();
             
             const textarea = document.getElementById('messageInput');
             textarea.addEventListener('input', function() {
@@ -867,6 +948,27 @@
                 this.style.height = Math.min(this.scrollHeight, 100) + 'px';
             }, { passive: true });
         };
+
+        function setupScrollListener() {
+            const container = document.getElementById('chatContainer');
+            const scrollTopBtn = document.getElementById('globalScrollTop');
+            
+            container.addEventListener('scroll', () => {
+                // Detectar si el usuario está haciendo scroll manualmente
+                isUserScrolling = true;
+                clearTimeout(userScrollTimeout);
+                userScrollTimeout = setTimeout(() => {
+                    isUserScrolling = false;
+                }, 1000);
+                
+                // Mostrar/ocultar botón de ir al inicio
+                //if (container.scrollTop > 200) {
+                    //scrollTopBtn.classList.add('visible');
+                //} else {
+                 //   scrollTopBtn.classList.remove('visible');
+                //}
+            }, { passive: true });
+        }
 
         function toggleModel() {
             const models = Object.keys(MODELS);
@@ -1045,6 +1147,7 @@
                         <p style="font-size: 0.85rem;">Inicia conversación</p>
                     </div>
                 `;
+                document.getElementById('globalScrollTop').classList.remove('visible');
                 return;
             }
             
@@ -1057,23 +1160,96 @@
                         <h3>NUEVO CHAT</h3>
                     </div>
                 `;
+                document.getElementById('globalScrollTop').classList.remove('visible');
                 return;
             }
             
-            const html = messages.map(msg => {
+            const html = messages.map((msg, index) => {
                 const modelName = msg.model ? MODELS[msg.model]?.shortName || '' : '';
                 
                 return `
-                <div class="message-wrapper ${msg.role}">
+                <div id="msg-wrapper-${index}" class="message-wrapper ${msg.role}">
                     <div class="message ${msg.role}">
                         ${formatMessage(msg.content)}
                     </div>
-                    ${modelName ? `<div class="message-model">${modelName}</div>` : ''}
+                    <div class="message-meta">
+                        ${modelName ? `<span class="message-model">${modelName}</span>` : ''}
+                        <button class="action-btn copy-btn" onclick="copyMessage(${index})" title="Copiar mensaje">
+                            📋
+                        </button>
+                        <button class="action-btn scroll-to-top-btn" onclick="scrollToMessage(${index})" title="Ir al inicio de este mensaje">
+                            ⬆
+                        </button>
+                    </div>
                 </div>
             `}).join('');
             
             container.innerHTML = html;
             scrollToBottom();
+        }
+
+        function copyMessage(index) {
+            const chat = currentData.chats[currentChatId];
+            if (!chat || !chat.messages[index]) return;
+            
+            const content = chat.messages[index].content;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(content).then(() => {
+                    showCopyFeedback(index);
+                }).catch(() => {
+                    fallbackCopy(content, index);
+                });
+            } else {
+                fallbackCopy(content, index);
+            }
+        }
+
+        function fallbackCopy(text, index) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(index);
+            } catch (err) {
+                alert('No se pudo copiar el mensaje');
+            }
+            
+            document.body.removeChild(textarea);
+        }
+
+        function showCopyFeedback(index) {
+            const wrapper = document.getElementById(`msg-wrapper-${index}`);
+            if (!wrapper) return;
+            
+            const copyBtn = wrapper.querySelector('.copy-btn');
+            if (copyBtn) {
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '✓';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalContent;
+                    copyBtn.classList.remove('copied');
+                }, 1500);
+            }
+        }
+
+        function scrollToMessage(index) {
+            const element = document.getElementById(`msg-wrapper-${index}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function scrollToTopOfChat() {
+            const container = document.getElementById('chatContainer');
+            container.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function updateTokenStats(stats) {
@@ -1115,11 +1291,16 @@
             
             isStreaming = true;
             document.getElementById('sendBtn').disabled = true;
+            isUserScrolling = false; // Resetear estado de scroll
             
             document.getElementById('tokenStatsText').textContent = '--';
             
             const container = document.getElementById('chatContainer');
             const loadingId = 'loading-' + Date.now();
+            
+            // Guardar posición actual del scroll antes de agregar el loading
+            const scrollBefore = container.scrollTop;
+            const wasAtBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 50;
             
             const loadingHtml = `
                 <div id="${loadingId}" class="message-wrapper assistant">
@@ -1128,11 +1309,17 @@
                         <div class="dot"></div>
                         <div class="dot"></div>
                     </div>
-                    <div class="message-model">${MODELS[currentModel].shortName}</div>
+                    <div class="message-meta">
+                        <span class="message-model">${MODELS[currentModel].shortName}</span>
+                    </div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', loadingHtml);
-            scrollToBottom();
+            
+            // Solo hacer scroll automático si el usuario no está leyendo mensajes anteriores
+            if (!isUserScrolling && wasAtBottom) {
+                scrollToBottom();
+            }
             
             try {
                 const apiKey = localStorage.getItem(API_KEY_STORAGE);
@@ -1166,20 +1353,36 @@
                 
                 const wrapperId = 'wrap-' + Date.now();
                 const msgId = 'msg-' + Date.now();
+                const msgIndex = chat.messages.length; // Índice del mensaje que se está creando
                 
                 container.insertAdjacentHTML('beforeend', `
                     <div id="${wrapperId}" class="message-wrapper assistant">
                         <div id="${msgId}" class="message assistant"></div>
-                        <div class="message-model">${MODELS[currentModel].shortName}</div>
+                        <div class="message-meta">
+                            <span class="message-model">${MODELS[currentModel].shortName}</span>
+                            <button class="action-btn copy-btn" onclick="copyMessage(${msgIndex})" title="Copiar mensaje">
+                                📋
+                            </button>
+                            <button class="action-btn scroll-to-top-btn" onclick="scrollToMessage(${msgIndex})" title="Ir al inicio de este mensaje">
+                                ⬆
+                            </button>
+                        </div>
                     </div>
                 `);
-                scrollToBottom();
+                
+                lastMessageElement = document.getElementById(wrapperId);
+                
+                // Scroll solo si el usuario no ha intervenido
+                if (!isUserScrolling && wasAtBottom) {
+                    scrollToBottom();
+                }
                 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
                 let msgElement = document.getElementById(msgId);
                 let tokenStats = { prompt: 0, completion: 0, total: 0 };
+                let updateCounter = 0;
                 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -1197,9 +1400,6 @@
                         try {
                             const parsed = JSON.parse(data);
                             
-                            // Log crudo del output
-                            //console.log('API Response Chunk:', parsed);
-                            
                             if (parsed.usage) {
                                 tokenStats.prompt = parsed.usage.prompt_tokens || 0;
                                 tokenStats.completion = parsed.usage.completion_tokens || 0;
@@ -1215,9 +1415,17 @@
                             const text = parsed.choices[0]?.delta?.content || '';
                             if (text) {
                                 fullContent += text;
-                                if (msgElement && (fullContent.length % 10 === 0 || text.includes('\n'))) {
+                                updateCounter++;
+                                
+                                // Actualizar DOM cada 3 chunks o si hay salto de línea para no saturar
+                                if (msgElement && (updateCounter % 3 === 0 || text.includes('\n'))) {
                                     msgElement.innerHTML = formatMessage(fullContent);
-                                    scrollToBottom();
+                                    
+                                    // Solo hacer scroll automático si el usuario NO está haciendo scroll manual
+                                    // y estaba al final del chat cuando comenzó el mensaje
+                                    if (!isUserScrolling && wasAtBottom) {
+                                        scrollToBottom();
+                                    }
                                 }
                             }
                         } catch (e) {}
@@ -1236,12 +1444,24 @@
                     updateTokenStats(tokenStats);
                 }
                 
+                // Guardar referencia para poder copiar después
                 chat.messages.push({
                     role: 'assistant',
                     content: fullContent,
                     timestamp: Date.now(),
                     model: currentModel
                 });
+                
+                // Actualizar el onclick del botón copiar con el índice correcto
+                const wrapper = document.getElementById(wrapperId);
+                if (wrapper) {
+                    const copyBtn = wrapper.querySelector('.copy-btn');
+                    const scrollBtn = wrapper.querySelector('.scroll-to-top-btn');
+                    const actualIndex = chat.messages.length - 1;
+                    if (copyBtn) copyBtn.setAttribute('onclick', `copyMessage(${actualIndex})`);
+                    if (scrollBtn) scrollBtn.setAttribute('onclick', `scrollToMessage(${actualIndex})`);
+                }
+                
                 saveData();
                 
             } catch (error) {
@@ -1255,13 +1475,16 @@
                             <strong>Error de conexión</strong><br>
                             ${escapeHtml(error.message)}
                         </div>
-                        <div class="message-model">ERR</div>
+                        <div class="message-meta">
+                            <span class="message-model">ERR</span>
+                        </div>
                     </div>
                 `);
                 scrollToBottom();
             } finally {
                 isStreaming = false;
                 document.getElementById('sendBtn').disabled = false;
+                lastMessageElement = null;
             }
         }
 
