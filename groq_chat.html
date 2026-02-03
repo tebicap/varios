@@ -565,6 +565,11 @@
         .empty-icon {
             font-size: 3rem;
             filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.3));
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
 
         @media (min-width: 768px) {
