@@ -542,6 +542,8 @@
 
         .scroll-to-top-btn {
             font-size: 0.75rem;
+            font-weight: 900;
+            transform: scale(1.2);
         }
 
         .action-btn.copied {
@@ -688,9 +690,11 @@
         /* Estadísticas de tokens - sin fondo, a 30px */
         .token-stats {
             position: absolute;
-            left: 20px;
+            width: 200px;
+            left: calc(50% - 100px);
             bottom: calc(100% + 2px);
             color: var(--neon-purple);
+            text-align: center;
             font-family: 'Orbitron', monospace;
             font-size: 0.65rem;
             font-weight: 600;
@@ -1494,9 +1498,10 @@
         }
 
         function handleKeyDown(event) {
+            //desactivo esto, no quiero mandar mensajse con Enter
             if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
+                //event.preventDefault();
+                //sendMessage();
             }
         }
 
