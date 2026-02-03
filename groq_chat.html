@@ -832,6 +832,9 @@
             background: rgba(0, 243, 255, 0.2);
             transform: translateY(-2px);
         }
+        .no-select {
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -856,7 +859,7 @@
     </div>
 
     <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <aside id="sidebar" class="sidebar">
+    <aside id="sidebar" class="sidebar no-select">
         <div class="sidebar-header">
             <div style="font-family: 'Orbitron', monospace; color: var(--neon-cyan); font-size: 0.9rem;">HISTORIAL</div>
             <button class="icon-btn" onclick="toggleSidebar()" style="width: 32px; height: 32px;">✕</button>
@@ -878,7 +881,7 @@
     </aside>
 
     <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;">
-        <header class="header">
+        <header class="header no-select">
             <button class="icon-btn menu-btn" onclick="toggleSidebar()">☰</button>
             <div class="header-title" id="currentChatTitle">NUEVO CHAT</div>
             
@@ -920,8 +923,8 @@
             </button>
             
             <!-- Switch de contexto (derecha) -->
-            <button id="contextSwitch" class="context-switch" onclick="toggleContextMode()">
-                <div class="context-switch-indicator"></div>
+            <button id="contextSwitch" class="context-switch no-select" onclick="toggleContextMode()">
+                <div class="context-switch-indicator no-select"></div>
                 <span id="contextSwitchText">CTX</span>
             </button>
         </div>
@@ -1169,7 +1172,7 @@
             if (messages.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">👾</div>
+                        <div class="empty-icon">💬</div>
                         <h3>NUEVO CHAT</h3>
                     </div>
                 `;
@@ -1186,7 +1189,7 @@
                     <div class="message ${msg.role}">
                         ${formatMessage(msg.content)}
                     </div>
-                    <div class="message-meta">
+                    <div class="message-meta no-select">
                         ${modelName ? `<span class="message-model">${modelName}</span>` : ''}
                         <button class="action-btn copy-btn" onclick="copyMessage(${actualIndex})" title="Copiar mensaje">
                             📋
@@ -1327,7 +1330,7 @@
                         <div class="dot"></div>
                         <div class="dot"></div>
                     </div>
-                    <div class="message-meta">
+                    <div class="message-meta no-select">
                         <span class="message-model">${MODELS[currentModel].shortName}</span>
                     </div>
                 </div>
@@ -1376,7 +1379,7 @@
                 container.insertAdjacentHTML('beforeend', `
                     <div id="${wrapperId}" class="message-wrapper assistant">
                         <div id="${msgId}" class="message assistant"></div>
-                        <div class="message-meta">
+                        <div class="message-meta no-select">
                             <span class="message-model">${MODELS[currentModel].shortName}</span>
                             <button class="action-btn copy-btn" onclick="copyMessage(${msgIndex})" title="Copiar mensaje">
                                 📋
@@ -1484,7 +1487,7 @@
                             <strong>Error de conexión</strong><br>
                             ${escapeHtml(error.message)}
                         </div>
-                        <div class="message-meta">
+                        <div class="message-meta no-select">
                             <span class="message-model">ERR</span>
                         </div>
                     </div>
@@ -1498,10 +1501,10 @@
         }
 
         function handleKeyDown(event) {
-            //desactivo esto, no quiero mandar mensajse con Enter
-            if (event.key === 'Enter' && !event.shiftKey) {
-                //event.preventDefault();
-                //sendMessage();
+            //envio mensaje solo con Ctrl + Enter
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
             }
         }
 
