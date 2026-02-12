@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Piratas: Puerto Seguro</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: 'Segoe UI', sans-serif;}
+        canvas { display: block; background: #f3d9b1; }
+        
+        #top-right-ui { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: none; z-index: 10; }
+        .stats-box { background: rgba(0,0,0,0.64); padding: 10px 15px; border-radius: 12px; border: 2px solid #f1c40f; color: white; pointer-events: auto; }
+        #health-bar-container { width: auto; height: 10px; background: #444; border-radius: 5px; border: 1px solid white; overflow: hidden; margin-top: 5px; }
+        #health-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #e74c3c, #2ecc71); }
+
+        .btn-ui { background: rgba(241, 196, 15, 0.7); border: 3px solid #8b4513; border-radius: 50%; width: 50px; height: 50px; font-size: 28px; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 0 #8b4513; transition: 0.1s; }
+        .btn-ui:active { transform: translateY(4px); box-shadow: none; }
+        
+        /* TIENDA */
+        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #5d4037; border: 5px solid #3e2723; padding: 25px; display: none; z-index: 100; color: #f1c40f; border-radius: 20px; text-align: center; width: 450px; box-shadow: 0 0 50px rgba(0,0,0,0.8); max-width: 80vw;}
+        .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .shop-item { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .shop-item:hover { border-color: #f1c40f; background: rgba(0,0,0,0.5); }
+        .shop-emoji { font-size: 50px; display: block; margin-bottom: 5px; }
+        .shop-name { font-weight: bold; font-size: 14px; display: block; color: white; }
+        .shop-price { color: #f1c40f; font-size: 13px; }
+        
+        #game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; color: #e74c3c; }
+        
+        #damage-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 50; }
+
+        .help-dialogo {
+            max-height: 80%;
+            overflow-y: scroll;
+        }
+
+        <!-- estilos genéricos reutilizables -->
+        .no-select{
+            user-select: none !important;
+        }
+        .ocultar {
+            display: none !important;
+        }
+        .ocultar-scrollbar {
+            -ms-overflow-style: none !important;  /* IE 10+ */
+            scrollbar-width: none !important;     /* Firefox */
+        }
+        .ocultar-scrollbar::-webkit-scrollbar {
+            display: none !important;             /* Chrome, Safari, Edge */
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="damage-overlay"></div>
+
+<div id="top-right-ui">
+    <div class="stats-box no-select">
+        <div>💰 Oro: <span id="gold">0</span> | ⚓ Nivel: <span id="level">1</span></div>
+        <div id="health-bar-container"><div id="health-bar"></div></div>
+    </div>
+    <button class="btn-ui" onclick="toggleShop()">🛒</button>
+    <button class="btn-ui" onclick="toggleHelp()">❓</button>
+</div>
+
+<div id="shop" class="modal no-select">
+    <h2 style="margin:0">🏪  Tienda</h2>
+    <div class="shop-grid">
+        <div class="shop-item" onclick="buy('boots', 50)"><span class="shop-emoji">🥾</span><span class="shop-name">Botas velocidad</span><span class="shop-price">50g</span></div>
+        <div class="shop-item" onclick="buy('hat_red', 40)"><span class="shop-emoji">👒</span><span class="shop-name">Gorro Rojo</span><span class="shop-price">40g</span></div>
+        <div class="shop-item" onclick="buy('hat_purple', 40)"><span class="shop-emoji">👒</span><span class="shop-name">Gorro Lila</span><span class="shop-price">40g</span></div>
+        <div class="shop-item" onclick="buy('beer', 25)"><span class="shop-emoji">🍺</span><span class="shop-name">Ron curativo</span><span class="shop-price">25g</span></div>
+        <div class="shop-item" onclick="buy('pet', 100)"><span class="shop-emoji">🦜</span><span class="shop-name">Loro</span><span class="shop-price">100g</span></div>
+    </div>
+    <button onclick="toggleShop()" style="width:100%; padding:10px; cursor:pointer;">Volver</button>
+</div>
+
+<div id="help" class="modal help-dialogo ocultar-scrollbar">
+    <h2>📜 Ayuda</h2>
+    <p>
+        👀 Mira el mapa para saber donde está el tesoro, tienes que encontrarlo!<br><br>
+        👆 Te mueves tocando la pantalla, o con las flechas si tienes teclado.<br><br>
+        👆 Presiona en la pantalla donde quieras que tu personaje cave para buscar. (en computadora presiona la tecla Escape también)<br><br>
+        🟡 El círculo alrededor del personaje indica el área donde estás cabando.<br><br>
+        🦜 Las mascotas te ayudarán a encontrar el tesoro! (amplían el área para cavar)<br><br>
+        ❌ No puedes nadar.<br><br>
+        🚣 Usa los muelles para subir al barco.<br><br>
+        🏝️ Ve a la orilla para bajarte.<br><br>
+        🦈☠️ ¡Cuidado con los tiburones!<br><br>
+        🌵☠️ Cuidado con las plantas venenosas!
+    </p>
+    <button onclick="toggleHelp()" style="width:100%; padding:10px; font-size: 1rem;">¡Entendido!</button>
+</div>
+
+<div id="game-over">
+    <h1>☠️ ¡DEVORADO! ☠️</h1>
+    <button onclick="location.reload()" style="padding:15px 30px; cursor:pointer; font-size:18px">Reintentar</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+
+const menu_juego = document.getElementById("top-right-ui");
+
+//detecto estoy en el movil
+const esMovil = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+let escalaMovil = 1; //por default no escalo objetos
+if (esMovil){ escalaMovil = 0.6; }
+
+
+let distanciaDificultad = 200 * escalaMovil; //distancia aceptable del pirata hasta el tesoro, cuanto más chico más dificil de encontrarlo
+let escalarPersonaje = 0.15 * escalaMovil; //tamaño del personaje en proporción con tamaño de assets originales
+let personaje_tamanioX; //preparo variable
+let personaje_tamanioY; //preparo variable
+let escalarBote = 0.2 * escalaMovil; //tamaño del bote en proporción con tamaño de assets originales
+let bote_tamanioX; //preparo variable
+let bote_tamanioY; //preparo variable
+let loro_tamanioX; //preparo variable
+let loro_tamanioY; //preparo variable
+let escalarLoro = 0.05 * escalaMovil; //tamaño del loro en proporción con tamaño de assets originales
+let venenosa_tamanioX; //preparo variable
+let venenosa_tamanioY; //preparo variable
+let escalarVenenosa = 0.05 * escalaMovil; //tamaño de la planta en proporción con tamaño de assets originales
+let arbolito1_tamanioX; //preparo variable
+let arbolito1_tamanioY; //preparo variable
+let escalararbolito1 = 0.2 * escalaMovil; //tamaño de la planta en proporción con tamaño de assets originales
+let palmera_tamanioX; //preparo variable
+let palmera_tamanioY; //preparo variable
+let escalarpalmera = 0.2 * escalaMovil; //tamaño de la planta en proporción con tamaño de assets originales
+let waterPattern1; //pattern para el agua
+let waterPattern2; //pattern para el agua
+let arenaPattern; //pattern para el agua
+
+// --- CARGA de ASSETS png ---
+
+const assets = {}; // Objeto para guardar todas las imágenes
+let assetsLoaded = 0;
+const totalAssets = 5; // idle + walk_1 + walk_2 + dig_1 + dig_2
+
+function loadAsset(name, src) {
+    assets[name] = new Image();
+    assets[name].src = src;
+    assets[name].onload = () => {
+        if(name == "idle"){
+            personaje_tamanioX = assets['idle'].width * escalarPersonaje;
+            personaje_tamanioY = assets['idle'].height * escalarPersonaje;
+        } else if (name == "bote1"){
+            bote_tamanioX = assets['bote1'].width * escalarBote;
+            bote_tamanioY = assets['bote1'].height * escalarBote;
+        } else if (name == "loro1"){
+            loro_tamanioX = assets['loro1'].width * escalarLoro;
+            loro_tamanioY = assets['loro1'].height * escalarLoro;
+        }  else if (name == "venenosa"){
+            venenosa_tamanioX = assets['venenosa'].width * escalarVenenosa;
+            venenosa_tamanioY = assets['venenosa'].height * escalarVenenosa;
+        }   else if (name == "arbolito1"){
+            arbolito1_tamanioX = assets['arbolito1'].width * escalararbolito1;
+            arbolito1_tamanioY = assets['arbolito1'].height * escalararbolito1;
+        }   else if (name == "palmera"){
+            palmera_tamanioX = assets['palmera'].width * escalarpalmera;
+            palmera_tamanioY = assets['palmera'].height * escalarpalmera;
+        } else if (name == "waterpattern1") {
+            waterPattern1 = ctx.createPattern(assets.waterpattern1, 'repeat');
+        } else if (name == "waterpattern2") {
+            waterPattern2 = ctx.createPattern(assets.waterpattern2, 'repeat');
+        } else if (name == "arena") {
+            arenaPattern = ctx.createPattern(assets.arena, 'repeat');
+        }
+        assetsLoaded++;
+        if (assetsLoaded === totalAssets) {
+            initLevel();
+            gameLoop(); // Empezar juego solo cuando todo está cargado
+        }
+    };
+}
+// llamadas
+loadAsset('idle', 'assets/pirata_parado.png');
+loadAsset('walk1', 'assets/pirata_camina1.png');
+loadAsset('walk2', 'assets/pirata_camina2.png');
+loadAsset('dig1', 'assets/pirata_cava1.png');
+loadAsset('dig2', 'assets/pirata_cava2.png');
+loadAsset('bote1', 'assets/bote1.png');
+loadAsset('bote2', 'assets/bote2.png'); //bote transparente para personaje
+loadAsset('bote3', 'assets/bote3.png'); //bote transparente para personaje, frame 2
+loadAsset('loro1', 'assets/loro1.png'); //loro frame 1
+loadAsset('loro2', 'assets/loro2.png'); //loro frame 2
+loadAsset('venenosa', 'assets/planta_venenosa.png');
+loadAsset('arbolito1', 'assets/arbolito1.png');
+loadAsset('palmera', 'assets/palmera.png');
+loadAsset('waterpattern1', 'assets/water_pattern1.jpg');
+loadAsset('waterpattern2', 'assets/water_pattern2.jpg');
+loadAsset('arena', 'assets/arena.jpg');
+
+function gameLoop() {
+    processInput();      // ¿Qué teclas se están pulsando?
+    update();            // FÍSICA: Movimiento, colisiones, entrar/salir de barco
+    updateAnimation();   // APARIENCIA: Elegir el frame del PNG y dirección
+    render();            // DIBUJO: Pintar todo en el Canvas
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Variable global para guardar el estado de las teclas
+let keys = {}; 
+function processInput() {
+    // Aquí no hacemos NADA de lógica. 
+    // Solo creamos variables "bandera" (booleanos) fáciles de leer.
+    
+    game.input = {
+        up: (keys['KeyW'] || keys['ArrowUp']),
+        down: (keys['KeyS'] || keys['ArrowDown']),
+        left: (keys['KeyA'] || keys['ArrowLeft']),
+        right: (keys['KeyD'] || keys['ArrowRight']),
+        dig: keys['Space']  // Cavado manual sigue disponible
+    };
+}
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const damageOverlay = document.getElementById('damage-overlay');
+
+// --- SISTEMA DE SONIDO ---
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+
+
+function playSound(type) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'dig') {
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+    } else if (type === 'damage') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'coin') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+    } else if (type == 'compraOK') {
+        osc.type = 'sine';
+        // grave "pam"
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(460, now + 0.08);
+
+        // salto a agudo "PAAMM"
+        osc.frequency.setValueAtTime(900, now + 0.09);
+        osc.frequency.exponentialRampToValueAtTime(1400, now + 0.25);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.3, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.start(now);
+        osc.stop(now + 0.36);
+    } else if (type == 'compraNO') {
+osc.type = 'square';
+
+// primer beep
+osc.frequency.setValueAtTime(420, now);
+gain.gain.setValueAtTime(0.001, now);
+gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+// segundo beep más grave
+osc.frequency.setValueAtTime(260, now + 0.1);
+gain.gain.setValueAtTime(0.001, now + 0.1);
+gain.gain.exponentialRampToValueAtTime(0.22, now + 0.11);
+gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+osc.start(now);
+osc.stop(now + 0.22);
+    }
+}
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
+
+let game = {
+    gold: 0, level: 1, hp: 100, active: true, invuln: 0,
+    player: { 
+        x: 0,
+        y: 0,
+        speed: 2,
+        shirt: '#3498db',
+        boatIdx: -1,
+        hasBoots: false,
+        hat: null,
+        facingRight: true,
+        animationState: 'idle', // Puede ser: 'idle', 'walking', 'digging'
+        currentFrame: 0,        // El índice del frame (0 o 1)
+        frameTimer: 0,           // El contador para cambiar de frame
+        digTimer: 0,         //tiempo de animación cavar
+        //variables de estado de navegación
+        targetX: null,      // Destino X
+        targetY: null,      // Destino Y
+        isMovingToTarget: false,  // Flag de navegación activa
+        digOnArrival: false      // Flag para cavar al llegar
+    },
+    boats: [], lakes: [], obstacles: [], particles: [], pets: [], sharks: [], keys: {},
+    treasure: { x: 0, y: 0 }, feedback: { timer: 0, x:0, y:0 },
+    frame: 0, //para usar con animaciones, se actualiza en update()
+    debug: {treasure: {show: false}}
+};
+
+function updateAnimation() {
+    let p = game.player;
+
+    let isMoving = game.input.up || game.input.down || game.input.left || game.input.right || p.isMovingToTarget;
+
+    //chequeo estado de movimiento procesado por processInput() 
+    // Si el jugador presiona espacio, activamos un temporizador de "cavando"
+    if (game.input.dig) {
+        p.digTimer = 20; // El pirata cavará durante 20 cuadros (aprox. 1/3 de segundo)
+    }
+
+    if (p.digTimer > 0) {
+        p.animationState = 'digging';
+        p.digTimer--; // El tiempo corre hacia atrás
+    } else if (isMoving) {
+        p.animationState = 'walking';
+    } else {
+        p.animationState = 'idle';
+        p.currentFrame = 0; 
+    }
+
+    // 2. ACTUALIZAR EL TEMPORIZADOR Y EL FRAME
+    if (p.animationState !== 'idle') {
+        p.frameTimer++;
+        
+        // Cada 10 frames del juego, cambiamos el dibujo del pirata
+        if (p.frameTimer > 10) { 
+            p.frameTimer = 0;
+            p.currentFrame++;
+            
+            // Como tus animaciones son de 2 frames, usamos el módulo % 2
+            // Esto hace que: 0 -> 1 -> 0 -> 1...
+            p.currentFrame = p.currentFrame % 2;
+        }
+    }
+}
+
+function isWater(x, y) {
+    // Retorna true si x,y está DENTRO del agua
+    return game.lakes.some(l => Math.hypot(x - l.x, y - l.y) < l.r);
+}
+
+function initLevel() {
+    game.lakes = []; game.boats = []; game.obstacles = []; game.sharks = [];
+    const margin = 50; 
+    let lakeRadius = Math.sqrt((canvas.width * canvas.height * 0.25) / Math.PI);
+    
+    // 1. Lagos, Muelles y Barcos (hago un solo loop/lago i<1)
+    for(let i=0; i<1; i++) {
+        let attempts = 0;
+        while(attempts < 100) {
+            attempts++;
+            let lx = 400 + Math.random() * (canvas.width - 800);
+            let ly = 400 + Math.random() * (canvas.height - 800);
+            if(game.lakes.some(l => Math.hypot(lx - l.x, ly - l.y) < lakeRadius * 2.1)) continue;
+
+            let points = [];
+            for(let a=0; a<Math.PI*2; a+=0.2) {
+                let r = lakeRadius + (Math.random()*30 - 15);
+                points.push({x: lx + Math.cos(a)*r, y: ly + Math.sin(a)*r});
+            }
+            
+            // Definir Muelle (en un ángulo aleatorio)
+            let dockAngle = Math.random() * Math.PI * 2;
+            let dockExtension = 0; // Cuánto sobresale el muelle HACIA LA ARENA
+            let dockX = lx + Math.cos(dockAngle) * (lakeRadius + dockExtension); 
+            let dockY = ly + Math.sin(dockAngle) * (lakeRadius + dockExtension);
+            
+            game.lakes.push({ x: lx, y: ly, r: lakeRadius, points, dock: {x: dockX, y: dockY, angle: dockAngle} });
+            
+            // Barco aparece en la punta externa del muelle -- NO
+            //game.boats.push({ x: dockX, y: dockY });
+
+            // Barco aparece en la punta INTERNA del muelle (donde toca el agua)
+            let defasaje_barco = 10; //para que no quede sobre el muelle
+            let boatX = lx + Math.cos(dockAngle) * (lakeRadius * 0.85) + defasaje_barco; // 0.85 = adentro del agua
+            let boatY = ly + Math.sin(dockAngle) * (lakeRadius * 0.85) + defasaje_barco;
+            //aseguro barco dentro de la pantalla
+            boatX = Math.max(boatX, 15); boatX = Math.min(boatX, canvas.width - 15);
+            boatY = Math.max(boatY, 15); boatY = Math.min(boatY, canvas.height - 15);
+            game.boats.push({ x: boatX, y: boatY });
+            
+            // Tiburones
+            for(let s=0; s<2; s++) {
+                game.sharks.push({ 
+                    lx, ly, orbitR: lakeRadius * 0.5, 
+                    angle: Math.random()*Math.PI*2, speed: 0.01 + (game.level * 0.002) + Math.random()*0.02, x:0, y:0 
+                });
+            }
+            break;
+        }
+    }
+
+    // Obstáculos
+    let numTrees = game.level + Math.floor(Math.random() * 8);
+    for(let i=0; i<numTrees; i++) spawnObstacle('tree');
+    let numPoison = game.level + Math.floor(Math.random() * 5);
+    for(let i=0; i<numPoison; i++) spawnObstacle('poison');
+
+    // Posiciono jugador en el centro, evitando agua
+    // Centro de pantalla con offset aleatorio
+    let safeX, safeY, attempts = 0, ampliador_rango = 1;
+    do {
+        safeX = (canvas.width / 2) + (Math.random() * 400 * ampliador_rango - 200 * ampliador_rango);
+        safeY = (canvas.height / 2) + (Math.random() * 400 * ampliador_rango - 200 * ampliador_rango);
+        // Asegurar que no salga de pantalla (margen 50px)
+        safeX = Math.max(50, Math.min(canvas.width - 50, safeX));
+        safeY = Math.max(50, Math.min(canvas.height - 50, safeY));
+        attempts++;
+        if (attempts == 2000){
+            //amplio rango para posicionar jugador
+            ampliador_rango += 0.1;
+            attempts = 0;
+            console.log("attempts: 2000", "rango ampliado: " + ampliador_rango);
+        }
+    } while (isWater(safeX, safeY));
+    game.player.x = safeX;
+    game.player.y = safeY;
+
+
+    // Tesoro
+    game.treasure.x = margin + Math.random() * (canvas.width - margin*2);
+    game.treasure.y = margin + Math.random() * (canvas.height - margin*2);
+    game.player.boatIdx = -1;
+    updateUI();
+}
+
+function spawnObstacle(type) {
+    let valid=false, attempts=0;
+    while(!valid && attempts<50) {
+        attempts++;
+        let ox = Math.random() * canvas.width;
+        let oy = Math.random() * canvas.height;
+        if(Math.hypot(ox - canvas.width/2, oy - canvas.height/2) > 100 && !isWater(ox, oy)) {
+            game.obstacles.push({ x: ox, y: oy, type: type }); valid=true;
+        }
+    }
+}
+
+function toggleShop() { document.getElementById('shop').style.display = (document.getElementById('shop').style.display === 'block') ? 'none' : 'block'; }
+function toggleHelp() { document.getElementById('help').style.display = (document.getElementById('help').style.display === 'block') ? 'none' : 'block'; }
+
+function buy(type, price) {
+    if(game.gold >= price) {
+        game.gold -= price;
+        if(type === 'boots') { game.player.hasBoots = true; game.player.speed = 5; }
+        if(type === 'hat_red') game.player.hat = '#c0392b';
+        if(type === 'hat_purple') game.player.hat = '#8e44ad';
+        if(type === 'beer') game.hp = Math.min(100, game.hp + 50);
+        if(type === 'pet') {
+            game.pets.push({
+                x: game.player.x,
+                y: game.player.y,
+                offsetX: Math.random() * 100 - 50,  // ← -20 a +20 aleatorio
+                offsetY: Math.random() * 30 - 30,  // ← -30 a 0 (arriba del jugador)
+                velocity: Math.round((0.02 + Math.random() * 0.1) * 1000) / 1000, //velocidad de vuelo random
+                color: colorRandom() //genero color aleatorio para la mascota
+            });
+            distanciaDificultad *= 1.1; //el loro aumenta rango de búsqued //el loro aumenta rango de búsquedaa
+        }
+        playSound("compraOK");
+        updateUI();
+    } else {playSound("compraNO")}
+}
+
+function updateUI() {
+    document.getElementById('gold').innerText = game.gold;
+    document.getElementById('level').innerText = game.level;
+    document.getElementById('health-bar').style.width = Math.max(0, game.hp) + "%";
+}
+
+function triggerDamage() {
+    if(game.invuln > 0) return;
+
+    // Quitar una mascota si hay
+    if(game.pets.length > 0) {
+        distanciaDificultad = Math.max(5, distanciaDificultad * 0.9); // disminuyo ayuda equivalente a una mascota/loro
+        game.pets.pop(); // Elimina la última mascota (la más reciente)
+        // O usa: game.pets.shift(); para quitar la primera
+        // O usa: game.pets.splice(index, 1); para quitar una específica
+    }
+
+    game.hp -= 5; 
+    playSound('damage');
+    game.player.hasBoots = false; //quito las botitas
+    distanciaDificultad = Math.max(5, parseInt(distanciaDificultad * 0.9) ); //disminuyo rango de búsqueda
+    game.invuln = 30; 
+    damageOverlay.style.opacity = 0.5;
+    setTimeout(() => damageOverlay.style.opacity = 0, 100);
+    updateUI();
+}
+
+window.addEventListener('keydown', e => { 
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    keys[e.code] = true; 
+    if(e.code === 'Space') {
+        performDig();
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function update() {
+    if(!game.active) return;
+
+    if(game.invuln > 0) game.invuln--;
+
+    // Actualizar frame global (animación constante)
+    game.frame = game.frame + 1;
+    game.frame > 60 ? game.frame = 0 : null ; //limito a 60 frames
+    //console.log(game.frame);
+
+    let dx = 0, dy = 0;
+    let p = game.player;
+    let isMoving = false;
+
+    // --- NAVEGACIÓN POR TECLADO (prioridad sobre movimiento automatico) ---
+    if (game.input.up || game.input.down || game.input.left || game.input.right) {
+        //cancelo posible movimiento automático
+        p.isMovingToTarget = false;
+        p.targetX = null;
+        p.targetY = null;
+
+
+        const speed = p.hasBoots ? (game.player.speed + 3) : game.player.speed;
+
+        // Uso objeto game.input controlado por processInput()
+        if (game.input.up) dy -= speed;
+        if (game.input.down) dy += speed;
+        if (game.input.left) { dx -= speed; p.facingRight = false; }
+        if (game.input.right) { dx += speed; p.facingRight = true; }
+        isMoving = dx !== 0 || dy !== 0;
+    } else if (p.isMovingToTarget && p.targetX !== null) { // ---NAVEGACION POR TOQUE ----
+        const distX = p.targetX - p.x;
+        const distY = p.targetY - p.y;
+        const distance = Math.hypot(distX, distY);
+        
+        // Si estamos lo suficientemente cerca del destino
+        if (distance < 5) {
+            // LLEGAMOS: Detener y cavar
+            p.isMovingToTarget = false;
+            p.targetX = null;
+            p.targetY = null;
+            
+            // Forzar dirección hacia el punto tocado (última dirección conocida)
+            if (Math.abs(distX) > Math.abs(distY)) {
+                p.facingRight = distX > 0;
+            }
+            
+            // Ejecutar cavado automático
+            if (p.digOnArrival) {
+                p.digOnArrival = false;
+                performDig();  // Función que encapsula la lógica de cavado
+            }
+        } else {
+            // Calcular dirección normalizada
+            const speed = p.hasBoots ? 5 : 2;
+            dx = (distX / distance) * speed;
+            dy = (distY / distance) * speed;
+            isMoving = true;
+            
+            // Actualizar dirección del sprite
+            if (Math.abs(dx) > 0.1) p.facingRight = dx > 0;
+        }
+    }
+
+    // Aplicar movimiento con colisiones
+    if(dx !== 0 || dy !== 0) {
+        let nx = game.player.x + dx;
+        let ny = game.player.y + dy;
+        let movingIntoWater = isWater(nx, ny);
+
+        if(game.player.boatIdx !== -1) {
+            // --- ESTÁS EN BARCO ---
+            if(movingIntoWater) {
+                // Navegar por agua
+                game.player.x = nx; game.player.y = ny;
+                game.boats[game.player.boatIdx].x = nx;
+                game.boats[game.player.boatIdx].y = ny;
+            } else {
+                // Tocar tierra -> DESCONECTAR BARCO
+                game.player.x = nx; game.player.y = ny;
+                game.player.boatIdx = -1; // El barco se queda atrás en su última coord (o se ajusta visualmente)
+                game.player.speed += 1; // dejo el barco
+            }
+        } else {
+            // --- ESTÁS A PIE ---
+            if(movingIntoWater) {
+
+                // INTENTAR SUBIR AL BARCO
+                let boatFound = -1;
+                game.boats.forEach((b, i) => { 
+                    // Si hay un barco en el agua muy cerca de donde quiero ir
+                    if(Math.hypot(nx - b.x, ny - b.y) < 35) boatFound = i, game.player.speed -= 1; //subo al barco y realentizo
+                });
+
+                if(boatFound !== -1) {
+                    game.player.boatIdx = boatFound;
+                    game.player.x = game.boats[boatFound].x; // Teletransportar al asiento del barco
+                    game.player.y = game.boats[boatFound].y;
+                } else if (isOnDock(nx, ny)) { //Si estoy sobre el muelle permito caminar
+                    game.player.x = nx; 
+                    game.player.y = ny;
+                } else if (isInMargin(nx, ny)){ //Si estoy en los másrgenes de la pantalla permito caminar
+                    game.player.x = nx; 
+                    game.player.y = ny;
+                } else {
+                    //cancelo posible movimiento automático
+                    p.isMovingToTarget = false;
+                    p.targetX = null;
+                    p.targetY = null;
+                }
+            } else {
+                // Caminar en tierra normal
+                game.player.x = nx; game.player.y = ny;
+            }
+        }
+        //oculto menú cuando el personaje se acerca
+        if(game.player.y < 180 && game.player.x > canvas.width - 380 ){
+            menu_juego.classList.add("ocultar");
+        } else {
+            menu_juego.classList.remove("ocultar");
+        }
+        //console.log("pos player:" + game.player.x);
+    }
+
+    // Limites de pantalla
+    game.player.x = Math.max(20, Math.min(canvas.width - 20, game.player.x));
+    game.player.y = Math.max(20, Math.min(canvas.height - 20, game.player.y));
+    if(game.player.boatIdx !== -1) {
+        game.boats[game.player.boatIdx].x = game.player.x;
+        game.boats[game.player.boatIdx].y = game.player.y;
+    }
+
+    // Tiburones
+    game.sharks.forEach(s => {
+        s.angle += s.speed;
+        s.x = s.lx + Math.cos(s.angle) * s.orbitR;
+        s.y = s.ly + Math.sin(s.angle) * s.orbitR;
+        if(Math.hypot(game.player.x - s.x, game.player.y - s.y) < 35) triggerDamage();
+    });
+    
+    // Veneno
+    game.obstacles.forEach(ob => {
+        if(ob.type === 'poison' && Math.hypot(game.player.x - ob.x, game.player.y - ob.y) < 20) triggerDamage();
+    });
+
+    if(game.hp <= 0) { game.active = false; document.getElementById('game-over').style.display = 'flex'; }
+    game.particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; if(p.life <= 0) game.particles.splice(i, 1); });
+    game.pets.forEach(p => { p.x += (game.player.x - p.x) * p.velocity; p.y += (game.player.y - p.y) * p.velocity; }); // mueve mascotas
+    
+    if(game.feedback.timer > 0) game.feedback.timer--;
+}
+
+function drawPirate(x, y, hasBoat) {
+    ctx.save();
+    ctx.translate(x, y);
+    if(!game.player.facingRight) ctx.scale(-1, 1);
+
+    let frameToDraw;
+    if (game.player.animationState === 'walking') {
+        frameToDraw = (game.player.currentFrame % 2 === 0) ? assets.walk1 : assets.walk2;
+    } else if (game.player.animationState === 'digging') {
+        frameToDraw = (game.player.currentFrame % 2 === 0) ? assets.dig1 : assets.dig2;
+    } else { // idle
+        frameToDraw = assets.idle;
+    }
+
+    if (frameToDraw && !esMovil) { // si hay frame pa dibujar, y no estoy en movil
+        ctx.drawImage(frameToDraw, -personaje_tamanioX/2, (-personaje_tamanioY/2-personaje_tamanioY/3), personaje_tamanioX, personaje_tamanioY);
+    } else if (frameToDraw && esMovil) { // Aseguro que hay imagen frame y que estamos en movil (assets mas chicos)
+        ctx.drawImage(frameToDraw, -personaje_tamanioX/2 -1, (-personaje_tamanioY/2-personaje_tamanioY/3) -5, personaje_tamanioX, personaje_tamanioY);
+    }
+
+    // Dibujar barco despueś del personaje (encima), si aplica
+    if(hasBoat) {
+        let current_bote = (game.player.currentFrame % 2 === 0) ? assets.bote2 : assets.bote3;
+        ctx.drawImage(current_bote, -personaje_tamanioX/2-20, -40, bote_tamanioX, bote_tamanioY);
+    }
+
+    
+    ctx.restore();
+}
+
+function radioDeDeteccion(){
+    // Dibujo radio de detección (encima del personaje)
+    let radius = distanciaDificultad;
+    ctx.save();
+    ctx.translate(game.player.x, game.player.y);
+    
+    // Círculo punteado dorado
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(241, 196, 15, 0.8)'; //contorno amarillo
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; //contorno blanco
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    
+    // Relleno sutil
+    ctx.fillStyle = 'rgba(255, 196, 15, 0.1)';
+    ctx.fill();
+
+    ctx.restore();
+}
+
+//detección camina sobre muelle
+function isOnDock(x, y) {
+    return game.lakes.some(l => {
+        // Distancia del punto (x,y) a la línea del muelle
+        let dockStartX = l.x + Math.cos(l.dock.angle) * l.r; // Donde toca el agua
+        let dockStartY = l.y + Math.sin(l.dock.angle) * l.r;
+        let dockEndX = l.dock.x; // Punta del muelle (en arena)
+        let dockEndY = l.dock.y;
+        
+        // Distancia punto-línea del muelle
+        let A = x - dockStartX;
+        let B = y - dockStartY;
+        let C = dockEndX - dockStartX;
+        let D = dockEndY - dockStartY;
+        
+        let dot = A * C + B * D;
+        let lenSq = C * C + D * D;
+        let param = lenSq !== 0 ? dot / lenSq : -1;
+        
+        let xx, yy;
+        if (param < 0) { xx = dockStartX; yy = dockStartY; }
+        else if (param > 1) { xx = dockEndX; yy = dockEndY; }
+        else { xx = dockStartX + param * C; yy = dockStartY + param * D; }
+        
+        let distance = Math.hypot(x - xx, y - yy);
+        return distance < 50; // Ancho del muelle (20px radio)
+    });
+}
+
+// Cache global para assets teñidos
+const assetTintado = {};
+
+//teñir asset
+function pintarAsset(img, color){
+    const key = img.src + '_' + color;  // key única por imagen + color
+    
+    if(!assetTintado[key]) { //si no existe el asset lo creo
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const x = c.getContext('2d');
+        
+        // Tiño plano manteniendo transparencia
+        x.fillStyle = color;
+        x.fillRect(0, 0, c.width, c.height);
+        x.globalCompositeOperation = 'destination-in';
+        x.drawImage(img, 0, 0);
+        
+        // Mezclo con original para respetar luces/sombras
+        x.globalCompositeOperation = 'multiply';
+        x.drawImage(img, 0, 0);
+        
+        x.globalCompositeOperation = 'source-atop';
+        
+        assetTintado[key] = c;  // guardar en cache
+    }
+    return assetTintado[key];
+}
+
+//color random para mascotas y quizás otros usos
+function colorRandom() {
+    const h = Math.floor(Math.random() * 360);
+    const s = 80 + Math.floor(Math.random() * 20); // 80-100%
+    const l = 70 + Math.floor(Math.random() * 20); // 50-70%
+    return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
+function render() {
+
+    /*    //debug cache
+    if (game.frame % 60 === 0) {  // Cada segundo
+        console.log('Patterns:', !!waterPattern1, !!waterPattern2, !!arenaPattern);
+        console.log('Cache size:', Object.keys(assetTintado).length);
+        console.log('Pets:', game.pets.length);
+    }
+    */
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height); //Limpio canvas
+    ctx.fillStyle = arenaPattern;
+    ctx.fillRect(0, 0, canvas.width, canvas.height); //limpio canvas
+    
+    //creo lagos
+    game.lakes.forEach(l => {
+        ctx.save(); //guardo contexto original/limpio
+
+        //console.log(Math.floor(game.frame / 25) % 2); //estado de animación
+
+        // Agua
+        const waterPattern = Math.floor(game.frame /25) % 2 === 0 ? waterPattern1 : waterPattern2; //selecciono fotograma correspondiente
+
+        ctx.fillStyle = waterPattern || '#3db0fd';
+        ctx.beginPath();
+
+        //puntos con uniones suaves
+        const pts = l.points;
+        ctx.moveTo((pts[0].x + pts[1].x)/2, (pts[0].y + pts[1].y)/2);
+        for(let i=0; i<pts.length; i++) {
+            const next = pts[(i+1) % pts.length];
+            const midX = (pts[i].x + next.x) / 2;
+            const midY = (pts[i].y + next.y) / 2;
+            ctx.quadraticCurveTo(pts[i].x, pts[i].y, midX, midY);
+        }
+
+        ctx.closePath(); ctx.fill();
+        //borde agua
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(60, 60, 200, 0.3)'; // Color del borde (azul oscuro)
+        ctx.stroke();
+
+        // tiburones
+        game.sharks.forEach(s => {
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            ctx.rotate(s.angle + Math.PI/2);
+            
+            // Aleta gris (triángulo)
+            ctx.fillStyle = 'rgba(127, 140, 141, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(0, -15);    // punta arriba
+            ctx.lineTo(-10, 10);   // base izquierda
+            ctx.lineTo(10, 10);    // base derecha
+            ctx.closePath();
+            ctx.fill();
+            
+            // Línea azul en la base (agua)
+            ctx.strokeStyle = 'rgba(130, 230, 255, 0.5)';
+            ctx.lineWidth = 4;     // apenas más ancha que la aleta (20px vs 20px de base)
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-11, 10);
+            ctx.lineTo(11, 10);
+            ctx.stroke();
+            
+            ctx.restore();
+        });
+        
+        // Muelle
+        ctx.save();
+        ctx.translate(l.dock.x, l.dock.y);
+        ctx.rotate(l.dock.angle);
+        ctx.fillStyle = '#6d4c41'; // Madera oscura
+        //ctx.fillRect(-40, -10, 50, 20); // Tablones hacia afuera
+        ctx.fillRect(-95, -10, 100, 30); // Tablones hacia afuera, -90 llega al agua, 100 de largo total
+        ctx.fillStyle = '#8d6e63'; // Clavos/Detalle
+        ctx.fillRect(-35, 8, 40, 4);
+        ctx.fillRect(-35, -2, 40, 4);
+
+        ctx.restore(); //restauro contexto anterior
+    });
+
+    game.boats.forEach((b, idx) => { 
+        if(game.player.boatIdx !== idx) { 
+            //ctx.fillStyle = '#a0522d'; ctx.beginPath(); ctx.ellipse(b.x, b.y, 22, 10, 0, 0, 7); ctx.fill(); 
+            ctx.drawImage(assets.bote1, b.x-bote_tamanioX/2, b.y-bote_tamanioY/2, bote_tamanioX, bote_tamanioY);
+        }
+    });
+
+    //dibujo partículas
+    game.particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 4, 4); });
+
+    //árboles y plantas
+    game.obstacles.forEach(ob => {
+        if(ob.type === 'tree') {
+            // este es el arbolito común
+            ctx.drawImage(assets.palmera, ob.x - palmera_tamanioX/2, ob.y - palmera_tamanioY/2, palmera_tamanioX, palmera_tamanioY);
+        } else {
+            //esta es la planta venenosa
+            ctx.drawImage(assets.venenosa, ob.x - venenosa_tamanioX/2, ob.y - venenosa_tamanioY/2, venenosa_tamanioX, venenosa_tamanioY);
+        }
+    });
+
+    //dibuja radio de detección de tesoro en personaje
+    radioDeDeteccion(); 
+
+    drawPirate(game.player.x, game.player.y, game.player.boatIdx !== -1);
+
+    //dibujo mascotas / loros
+    game.pets.forEach(p => {
+        //loro como círuculo sin assets //ctx.fillStyle = 'orange'; ctx.beginPath(); ctx.arc(p.x-30, p.y-50, 6, 0, 7); ctx.fill();
+
+        let current_asset_loro = (game.player.currentFrame % 2 === 0) ? assets.loro1 : assets.loro2;
+        let current_asset_loro_pintado = pintarAsset(current_asset_loro, p.color);
+        ctx.save();
+
+        ctx.translate(p.x - 30 + (p.offsetX || 0) + loro_tamanioX/2, p.y - 50 + (p.offsetY || 0) + loro_tamanioY/2);
+        if(!game.player.facingRight){ ctx.scale(-1, 1)}; //invierto loro si voy pa un lado
+
+        ctx.drawImage(current_asset_loro_pintado, -loro_tamanioX/2, -loro_tamanioY/2 -50, loro_tamanioX, loro_tamanioY);
+
+        ctx.restore();  // ← Restaurar estado
+    });
+
+    // Dibujar tesoro (testing)
+    if (game.debug.treasure.show == true){
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('X', game.treasure.x, game.treasure.y);
+    }
+
+    //dibujo texto si no se encuentra el tesoro
+    if(game.feedback.timer > 0) {
+        //posición personaje:
+        x = game.feedback.x-20; y = game.feedback.y-40;
+        //dibujo borde negro:
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.strokeText("VACÍO", x, y);
+
+        //dibujo relleno blanco:
+        ctx.fillStyle = "white";
+        ctx.fillText( "VACÍO", x, y);
+    }
+
+    let mw = canvas.width * 0.15, mh = canvas.height * 0.15;
+    let mx = canvas.width - mw - 25, my = canvas.height - mh - 25;
+    ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(mx - 4, my - 24, mw + 8, mh + 28);
+    ctx.fillStyle = "rgba(243, 229, 171, 0.6)"; ctx.fillRect(mx, my, mw, mh);
+    ctx.fillStyle = "#5d4037"; ctx.font = "bold 12px Arial"; ctx.fillText("📜MAPA", mx + 5, my - 8);
+    ctx.fillStyle = "red"; ctx.font = "bold 16px Arial";
+    ctx.fillText("X", mx + (game.treasure.x/canvas.width)*mw - 5, my + (game.treasure.y/canvas.height)*mh + 5);
+
+    //dibujar marcador de destino de personaje
+    if (targetMarker.active) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,100, 100, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(targetMarker.x, targetMarker.y, 15, 0, Math.PI * 2);
+        ctx.stroke();
+        targetMarker.timer--;
+        if (targetMarker.timer <= 0) targetMarker.active = false;
+        ctx.restore();
+    }
+}
+
+//función para cavar
+function performDig() {
+    // Reproducir sonido
+    playSound('dig');
+    
+    // Crear partículas
+    let inW = isWater(game.player.x, game.player.y);
+    let offset_direction = game.player.facingRight ? 30 : -30;
+    for (let i = 0; i < 8; i++) {
+        game.particles.push({
+            x: game.player.x + offset_direction, 
+            y: game.player.y + 10, 
+            vx: Math.random() * 4 - 2, 
+            vy: -Math.random() * 5, 
+            color: inW ? '#00fbff' : '#795548', 
+            life: 20
+        });
+    }
+    
+    // Verificar si está cerca el tesoro
+    //Calcula la distancia euclidiana (en línea recta) entre dos puntos
+    const distToTreasure = Math.hypot( 
+        game.player.x - game.treasure.x, 
+        game.player.y - game.treasure.y
+    );
+    
+    if (distToTreasure < distanciaDificultad) {
+        // ¡TESORO ENCONTRADO!
+        game.gold += 20;
+        game.level++;
+        playSound('coin');
+        initLevel();
+        distanciaDificultad = parseInt(distanciaDificultad * 0.9);
+        if (distanciaDificultad < 5) distanciaDificultad = 5; // distancia dificultad mínima = 5
+    } else {
+        // Nada aquí
+        game.feedback = {
+            timer: 30, 
+            x: game.player.x, 
+            y: game.player.y - 30
+        };
+    }
+    
+    // Activar animación de cavado
+    game.player.digTimer = 20;
+}
+
+//mostrar destino de personaje (lugar clickeado)
+let targetMarker = { x: 0, y: 0, active: false, timer: 0 };
+function showTargetMarker(x, y) {
+    targetMarker.x = x;
+    targetMarker.y = y;
+    targetMarker.active = true;
+    targetMarker.timer = 60; // 1 segundo a 60fps
+}
+
+//detecta jugador en los márgenes
+function isInMargin(x, y){
+    let margen = 40;
+    return (
+        x < margen ||                    // Margen izquierdo
+        x > canvas.width - margen ||     // Margen derecho
+        y < margen ||                    // Margen superior
+        y > canvas.height - margen       // Margen inferior
+    );
+}
+
+//listener para mover el jugador con un click/touch
+canvas.addEventListener('click', (e) => { //orig: pointerdown
+    // Ignorar si el toque es en UI (botones, modales)
+    if (e.target !== canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const touchX = e.clientX - rect.left;
+    const touchY = e.clientY - rect.top;
+    
+    // Establecer destino
+    game.player.targetX = touchX;
+    game.player.targetY = touchY;
+    game.player.isMovingToTarget = true;
+    game.player.digOnArrival = true;  // Marcar que debe cavar al llegar
+    
+    // Opcional: Mostrar indicador visual de destino
+    showTargetMarker(touchX, touchY);
+});
+</script>
+</body>
+</html>
