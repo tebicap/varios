@@ -133,6 +133,16 @@ let waterPattern1; //pattern para el agua
 let waterPattern2; //pattern para el agua
 let arenaPattern; //pattern para el agua
 
+//creo canvas
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const damageOverlay = document.getElementById('damage-overlay');
+
+// --- SISTEMA DE SONIDO ---
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+
 // --- CARGA de ASSETS png ---
 
 const assets = {}; // Objeto para guardar todas las imágenes
@@ -193,14 +203,40 @@ loadAsset('waterpattern1', 'assets/water_pattern1.jpg');
 loadAsset('waterpattern2', 'assets/water_pattern2.jpg');
 loadAsset('arena', 'assets/arena.jpg');
 
-function gameLoop() {
-    processInput();      // ¿Qué teclas se están pulsando?
-    update();            // FÍSICA: Movimiento, colisiones, entrar/salir de barco
-    updateAnimation();   // APARIENCIA: Elegir el frame del PNG y dirección
-    render();            // DIBUJO: Pintar todo en el Canvas
 
-    requestAnimationFrame(gameLoop);
+const INTERVALO_LOGICA = 1000 / 60;   // 60 lógicas x seg
+let lastLogic = performance.now();
+let fotogramasSaltados = 0;           // estadística (opcional)
+
+// chequea retardo de fotogramas
+function frameTardoMucho() {
+    // Devuelve true si el anterior frame fue “lento”. (más de 20ms)
+    return (performance.now() - lastLogic) > 20;
 }
+
+function gameLoop(tiempo) {
+
+    // LÓGICA (siempre 60 fps)
+    while (tiempo - lastLogic >= INTERVALO_LOGICA) {
+        processInput();      // ¿Qué teclas se están pulsando?
+        update();            // FÍSICA: Movimiento, colisiones, entrar/salir de barco
+        updateAnimation();   // APARIENCIA: Elegir el frame del PNG y dirección
+
+        lastLogic += INTERVALO_LOGICA;
+    }
+
+    // SE PINTA ESTE FRAME?
+    const DESCARTAR = fotogramasSaltados < 1 && frameTardoMucho();
+    if (!DESCARTAR) {
+        render();            // DIBUJO: Pintar todo en el Canvas
+        fotogramasSaltados = 0;
+    } else {
+        fotogramasSaltados++;
+    }
+
+    requestAnimationFrame(gameLoop); //vuelvo a llamar al loop antes del pintado del nav
+}
+
 
 // Variable global para guardar el estado de las teclas
 let keys = {}; 
@@ -213,17 +249,9 @@ function processInput() {
         down: (keys['KeyS'] || keys['ArrowDown']),
         left: (keys['KeyA'] || keys['ArrowLeft']),
         right: (keys['KeyD'] || keys['ArrowRight']),
-        dig: keys['Space']  // Cavado manual sigue disponible
+        dig: keys['Space']  // Cavado manual
     };
 }
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const damageOverlay = document.getElementById('damage-overlay');
-
-// --- SISTEMA DE SONIDO ---
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
 
 
 
@@ -343,7 +371,7 @@ function updateAnimation() {
             p.frameTimer = 0;
             p.currentFrame++;
             
-            // Como tus animaciones son de 2 frames, usamos el módulo % 2
+            // Como las animaciones son de 2 frames, usamos el módulo % 2
             // Esto hace que: 0 -> 1 -> 0 -> 1...
             p.currentFrame = p.currentFrame % 2;
         }
@@ -521,7 +549,7 @@ function update() {
 
     // Actualizar frame global (animación constante)
     game.frame = game.frame + 1;
-    game.frame > 60 ? game.frame = 0 : null ; //limito a 60 frames
+    if (game.frame > 60) { game.frame = 0 }; //limito a 60 frames
     //console.log(game.frame);
 
     let dx = 0, dy = 0;
