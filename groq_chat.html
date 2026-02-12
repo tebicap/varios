@@ -457,7 +457,7 @@
 
         .message.assistant {
             background: rgba(188, 19, 254, 0.1);
-            border: 1px solid rgba(188, 19, 254, 0.3);
+            border: 1px solid rgba(188, 19, 254, 0.5);
             border-bottom-left-radius: 4px;
             box-shadow: 0 0 20px rgba(188, 19, 254, 0.15),
                         inset 0 0 20px rgba(188, 19, 254, 0.05);
@@ -840,6 +840,10 @@
         .no-select {
             user-select: none;
         }
+        .mensaje-desconectado{
+            border-style: dashed !important;
+            box-shadow: none !important;
+        }
     </style>
 </head>
 <body>
@@ -1009,6 +1013,18 @@
             isContextMode = !isContextMode;
             localStorage.setItem(CONTEXT_MODE_STORAGE, isContextMode);
             updateContextSwitch();
+            chequeaMensajesConectados();
+        }
+
+        function toggleContextMessage(index){
+            //desconcetar o conectar mensaje del contexto
+            const elem = document.querySelector("#msg-wrapper-" + index + " div");
+            elem.classList.toggle("mensaje-desconectado"); //añado clase borde punteado
+            let mensaje_estado = currentData.chats[currentChatId].messages[index].conectado;
+            currentData.chats[currentChatId].messages[index].conectado = !mensaje_estado
+            //console.log("nuevo estado: ", currentData.chats[currentChatId].messages[index].conectado);
+            saveData(); //guardo nuevo estado de mensaje
+            chequeaMensajesConectados(); //para mostrar botón de contexto punteado o no
         }
 
         function updateContextSwitch() {
@@ -1188,14 +1204,15 @@
             const html = messages.map((msg, index) => {
                 const actualIndex = msg.index !== undefined ? msg.index : index;
                 const modelName = msg.model ? MODELS[msg.model]?.shortName || '' : '';
+                const class_conectado = msg.conectado ? "" : "mensaje-desconectado";
                 
                 return `
-                <div id="msg-wrapper-${actualIndex}" class="message-wrapper ${msg.role}">
-                    <div class="message ${msg.role}">
+                    <div id="msg-wrapper-${actualIndex}" class="message-wrapper ${msg.role}">
+                    <div class="message ${msg.role} ${class_conectado}">
                         ${formatMessage(msg.content)}
                     </div>
                     <div class="message-meta no-select">
-                        ${modelName ? `<span class="message-model">${modelName}</span>` : ''}
+                        ${modelName ? `<span class="message-model" onclick="toggleContextMessage(${actualIndex})">${modelName}</span>` : ''}
                         <button class="action-btn copy-btn" onclick="copyMessage(${actualIndex})" title="Copiar mensaje">
                             📋
                         </button>
@@ -1205,9 +1222,12 @@
                     </div>
                 </div>
             `}).join('');
-            
+
             container.innerHTML = html;
             scrollToBottom();
+
+            //chequeo si hay al menos un mensaje no concetado al contexto
+            setTimeout(() => chequeaMensajesConectados(), 1000);
         }
 
         function copyMessage(index) {
@@ -1291,13 +1311,14 @@
             
             if (!currentChatId) createNewChat();
             
-            const chat = currentData.chats[currentChatId];
+            const chat = currentData.chats[currentChatId]; //obtiene mensajes
 
             const nextUserIndex = chat.messages.length;
             const nextAssistantIndex = chat.messages.length + 1;
             
             chat.messages.push({
                 role: 'user',
+                conectado: true,
                 content: content,
                 timestamp: Date.now(),
                 model: currentModel,
@@ -1352,7 +1373,9 @@
                 
                 let messagesToSend;
                 if (isContextMode) {
-                    messagesToSend = chat.messages.map(m => ({ role: m.role, content: m.content }));
+                    messagesToSend = chat.messages
+                        .filter(m => m.conectado)
+                        .map(m => ({ role: m.role, content: m.content }));
                 } else {
                     messagesToSend = [{ role: 'user', content: content }];
                 }
@@ -1385,7 +1408,7 @@
                     <div id="${wrapperId}" class="message-wrapper assistant">
                         <div id="${msgId}" class="message assistant"></div>
                         <div class="message-meta no-select">
-                            <span class="message-model">${MODELS[currentModel].shortName}</span>
+                            <span class="message-model" onclick="toggleContextMessage(${nextAssistantIndex})">${MODELS[currentModel].shortName}</span>
                             <button class="action-btn copy-btn" onclick="copyMessage(${msgIndex})" title="Copiar mensaje">
                                 📋
                             </button>
@@ -1473,6 +1496,7 @@
                 // Guardar referencia para poder copiar después
                 chat.messages.push({
                     role: 'assistant',
+                    conectado: true,
                     content: fullContent,
                     timestamp: Date.now(),
                     model: currentModel,
@@ -1504,6 +1528,26 @@
                 lastMessageElement = null;
             }
         }
+
+        function chequeaMensajesConectados(){
+            const botonSwitchContext = document.querySelector("#contextSwitch");
+
+            //entro solo si el modo contexto está activado
+            if(isContextMode != false) {
+                for (const m of currentData.chats[currentChatId].messages){
+                    botonSwitchContext.classList.remove("mensaje-desconectado"); //default sin modo desconectado
+                    if (m.conectado == false){
+                        //se encuentra el primer mensaje desconcetado
+                        botonSwitchContext.classList.add("mensaje-desconectado");
+                        break
+                    }
+                }
+            } else {
+                console.log("context no activado");
+                botonSwitchContext.classList.remove("mensaje-desconectado");
+            }
+        }
+
 
         function handleKeyDown(event) {
             //envio mensaje solo con Ctrl + Enter
