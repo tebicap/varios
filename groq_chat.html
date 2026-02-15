@@ -1088,6 +1088,10 @@
         }
 
         function createNewChat() {
+            //remuevo linea punteada en botón de contexto
+            const botonSwitchContext = document.querySelector("#contextSwitch");
+            botonSwitchContext.classList.remove("mensaje-desconectado");
+
             const id = 'chat_' + Date.now();
             const newChat = {
                 id: id,
