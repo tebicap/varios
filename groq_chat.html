@@ -765,9 +765,10 @@
         .message pre {
             background: rgba(0, 0, 0, 0.6);
             padding: 0.5rem;
+            margin: 0.5rem 0;
+            margin-top: 4px;
             border-radius: 6px;
             overflow-x: auto;
-            margin: 0.5rem 0;
             font-size: 0.85rem;
             border: 1px solid rgba(0, 243, 255, 0.1);
         }
@@ -807,6 +808,32 @@
             .neon-btn:hover {
                 transform: none;
             }
+        }
+
+        .opciones_codigo {
+            display: flex;
+            flex-direction: row-reverse;
+            width: 100%;
+            /* background-color: #51ff4f21; */ /* solo para testing */
+            margin: 0;
+            margin-top: -6px;
+            padding: 0;
+            font-size: 0.95rem;
+            /* transform: translateY(32px); */ /* esto lo ubica dentro del contenedor de codigo */
+        }
+
+        .opciones_codigo button {
+            background-color: #08010c;
+            margin-right: 10px;
+            border: none;
+            border-radius: 2px;
+            padding: 1px 5px 1px 5px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+        .opciones_codigo button:active {
+            transform: scale(0.8);
         }
 
         /* Scroll to top floating button */
@@ -1289,6 +1316,50 @@
             }
         }
 
+        function copyCode(e) {
+            const content = e.parentElement.nextElementSibling.innerText;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(content).then(() => {
+                    showCopyCodeFeedback(e);
+                }).catch(() => {
+                    fallbackCopyCode(content, e);
+                });
+            } else {
+                fallbackCopyCode(content, e);
+            }
+        }
+
+        function fallbackCopyCode(text, e) {
+            //copio texto mediante un textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopyCodeFeedback(e);
+            } catch (err) {
+                alert('No se pudo copiar el mensaje');
+            }
+            
+            document.body.removeChild(textarea);
+        }
+
+        function showCopyCodeFeedback(e) {
+            const originalContent = e.innerHTML;
+            e.innerHTML = '✓';
+            e.classList.add('copied');
+            
+            setTimeout(() => {
+                e.innerHTML = originalContent;
+                e.classList.remove('copied');
+            }, 1500);
+        }
+
         function scrollToMessage(index) {
             const element = document.getElementById(`msg-wrapper-${index}`);
             if (element) {
@@ -1597,7 +1668,7 @@
 
         function formatMessage(text) {
             text = escapeHtml(text);
-            text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, '<div class="opciones_codigo"><button  onclick="copyCode(this)">copiar</button></div><pre><code>$2</code></pre>');
             text = text.replace(/`([^`]+)`/g, '<code style="color: var(--neon-cyan);">$1</code>');
             text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             text = text.replace(/\n/g, '<br>');
