@@ -56,6 +56,8 @@
             margin: 20px auto;
             outline: none;
             -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* ← Evita que el botón intercepte gestos táctiles */
+            -webkit-user-select: none; /* ← Evita selección de texto en iOS */
         }
 
         #record-btn:active, #record-btn.recording {
@@ -107,7 +109,7 @@
     
     <div class="api-key-section">
         <label for="apiKey">Groq API Key:</label>
-        <input type="password" id="apiKey" placeholder="gsk_..." onclick="this.focus()"/>
+        <input type="textarea" id="apiKey" placeholder="gsk_..." />
     </div>
 
     <p>Mantén presionado para grabar:</p>
@@ -198,6 +200,7 @@
     // Lógica de los eventos de presionar
     const startRecording = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!mediaRecorder) {
             alert("El micrófono no está listo");
             return;
@@ -209,7 +212,7 @@
     };
 
     const stopRecording = (e) => {
-        e.preventDefault();
+        //e.preventDefault(); //esto lo quito porque inhabilita el click sobre el input del pass
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
             recordBtn.classList.remove('recording');
@@ -227,6 +230,15 @@
 
     // Inicializar al cargar
     initAudio();
+
+    // almaceno y recupero apikey
+    // leo api de localStore
+    apiKeyInput.value = localStorage.getItem('whisper_test_groqkey') || '';
+    // guardo api
+    apiKeyInput.addEventListener('change', ()=> {
+        localStorage.setItem('whisper_test_groqkey', apiKeyInput.value.trim());
+    })
+
 </script>
 
 </body>
