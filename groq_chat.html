@@ -1756,6 +1756,7 @@
                 };
 
                 mediaRecorder.onstop = async () => {
+                    alert("estos son los chunks: " + audioChunks.length); //borrar
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     alert(audioBlob.size); //borrar
                     await sendToGroq(audioBlob);
