@@ -1757,7 +1757,7 @@
 
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    alert(audioBlob.size);
+                    alert(audioBlob.size); //borrar
                     await sendToGroq(audioBlob);
                 };
             } catch (err) {
@@ -1809,6 +1809,9 @@
         }
 
         // Lógica de los eventos de presionar
+
+        let recordingStartTime = 0; // para contar el tiempo de grabado
+
         const startRecording = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -1816,6 +1819,11 @@
                 alert("El micrófono no está listo");
                 return;
             }
+
+            if (recordingStartTime != 0){return;} //salgo si ya estaba grabando
+
+            recordingStartTime = Date.now(); // inicio de grabacion
+
             audioChunks = [];
             mediaRecorder.start();
             recordBtn.classList.add('recording');
@@ -1827,6 +1835,11 @@
 
         const stopRecording = (e) => {
             //e.preventDefault(); //esto lo quito porque inhabilita el click sobre el input del pass
+            // Ignorar eventos de stop que lleguen menos de 300ms después de iniciar
+            if (Date.now() - recordingStartTime < 300) return; // me salgo
+
+            recordingStartTime = 0; //reinicio a cero para saber que ya no grabo
+
             if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
                 recordBtn.classList.remove('recording');
