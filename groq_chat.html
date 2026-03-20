@@ -1803,7 +1803,7 @@
             } catch (error) {
                 console.error("Error:", error);
                 messageInput.value = "Error de red o CORS.";
-                heymensaje = true;
+                haynotificacion = true;
             } finally {
                 // no hago nada
             }
@@ -1829,9 +1829,9 @@
             mediaRecorder.start();
             recordBtn.classList.add('recording');
             messageInput.classList.add("haynotificacion");
-            //inputprevio = messageInput.value;
-            //messageInput.value = "Grabando...";
-            heymensaje = true;
+            inputprevio = messageInput.value;
+            messageInput.value = "Grabando...";
+            haynotificacion = true;
         };
 
         const stopRecording = (e) => {
