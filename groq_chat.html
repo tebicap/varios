@@ -1003,7 +1003,7 @@
         const API_KEY_STORAGE = 'chatgroq_apikey';
         const MODEL_STORAGE = 'chatgroq_model';
         const CONTEXT_MODE_STORAGE = 'chatgroq_context_mode';
-        const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+        const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'; 
 
         const modelo_default = 'openai/gpt-oss-120b'; //modelo default para cuando no había uno guardado o si había un modelo deprecated.
         
@@ -1777,11 +1777,12 @@
         let mediaRecorder;
         let audioChunks = [];
         const recordBtn = document.getElementById('recordBtn');
+        let stream = null; //esto para capturar el mic y liberarlo
 
         // Inicializar micrófono
         async function initAudio() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
 
                 mediaRecorder.ondataavailable = (event) => {
@@ -1790,7 +1791,9 @@
 
                 mediaRecorder.onstop = async () => {
                     //cierro mics
-                    stream.getTracks().forEach(track => track.enabled = false );
+                    stream.getTracks().forEach(track => track.stop() );
+                    stream = null; //elimino captura de mic
+                    mediaRecorder = null;
                     //alert("estos son los chunks: " + audioChunks.length); //borrar
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     //alert(audioBlob.size); //borrar
@@ -1848,15 +1851,13 @@
 
         let recordingStartTime = 0; // para contar el tiempo de grabado
 
-        const startRecording = (e) => {
+        const startRecording = async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!mediaRecorder) {
-                alert("El micrófono no está listo");
-                return;
-            }
 
             if (recordingStartTime != 0){return;} //salgo si ya estaba grabando
+
+            await initAudio(); //capturo mic
 
             recordingStartTime = Date.now(); // inicio de grabacion
 
