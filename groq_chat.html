@@ -1004,13 +1004,17 @@
         const MODEL_STORAGE = 'chatgroq_model';
         const CONTEXT_MODE_STORAGE = 'chatgroq_context_mode';
         const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+        const modelo_default = 'openai/gpt-oss-120b'; //modelo default para cuando no había uno guardado o si había un modelo deprecated.
         
         const MODELS = {
-            'moonshotai/kimi-k2-instruct-0905': { shortName: 'K2', fullName: 'KIMI K2' },
+            // Deprecated: 
+            'openai/gpt-oss-120b': { shortName: 'GPT-OSS', fullName: 'GPT-OSS-120b' },
             'groq/compound': { shortName: 'CMP', fullName: 'COMPOUND' }
         };
         
-        let currentModel = localStorage.getItem(MODEL_STORAGE) || 'moonshotai/kimi-k2-instruct-0905';
+        let currentModel = localStorage.getItem(MODEL_STORAGE) || modelo_default;
+        if (! (currentModel in MODELS) ){ currentModel = modelo_default } //Si el current model cuardado es un modelo que se quitó de la lista en MODELS.
         let isContextMode = localStorage.getItem(CONTEXT_MODE_STORAGE) !== 'false';
         let currentData = { activeChatId: null, chats: {} };
         let currentChatId = null;
@@ -1436,7 +1440,7 @@
                 chat.title = content.substring(0, 35) + (content.length > 35 ? '...' : '');
                 updateHeaderTitle(chat.title);
                 renderChatList();
-            }
+            };
             
             input.value = '';
             input.style.height = 'auto';
@@ -1487,19 +1491,48 @@
                     messagesToSend = [{ role: 'user', content: content }];
                 }
                 
+                // Defino JSON según modelos (pueden haber modelos deprecated pero no afecta la lógica)
+                const json_opciones = {
+                    'openai/gpt-oss-120b':
+                            {
+                                model: 'openai/gpt-oss-120b',
+                                messages: messagesToSend,
+                                temperature: 1,
+                                top_p: 1,
+                                reasoning_effort: "medium",
+                                max_completion_tokens: 8000,
+                                reasoning_effort: "medium",
+                                stream: true,
+                                stop: null
+                            },
+                    'groq/compound':
+                            {
+                                model: 'groq/compound',
+                                messages: messagesToSend,
+                                temperature: 1,
+                                top_p: 1,
+                                max_tokens: 1024,
+                                stream: true,
+                                stop: null,
+                                compound_custom: {
+                                    tools: {
+                                      enabled_tools: [
+                                        "web_search",
+                                        "code_interpreter",
+                                        "visit_website"
+                                      ]
+                                    }
+                                }
+                            }
+                }
+
                 const response = await fetch(GROQ_API_URL, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        model: currentModel,
-                        messages: messagesToSend,
-                        temperature: 0.6,
-                        max_tokens: 4096,
-                        stream: true
-                    })
+                    body: JSON.stringify( json_opciones[currentModel] )
                 });
                 
                 if (!response.ok) throw new Error(`Error ${response.status}`);
@@ -1756,6 +1789,8 @@
                 };
 
                 mediaRecorder.onstop = async () => {
+                    //cierro mics
+                    stream.getTracks().forEach(track => track.stop() );
                     //alert("estos son los chunks: " + audioChunks.length); //borrar
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     //alert(audioBlob.size); //borrar
