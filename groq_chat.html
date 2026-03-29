@@ -1790,7 +1790,7 @@
 
                 mediaRecorder.onstop = async () => {
                     //cierro mics
-                    stream.getTracks().forEach(track => track.stop() );
+                    stream.getTracks().forEach(track => track.enabled = false );
                     //alert("estos son los chunks: " + audioChunks.length); //borrar
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     //alert(audioBlob.size); //borrar
