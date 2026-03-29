@@ -14,10 +14,12 @@
             --bg-tertiary: #12121a;
             --neon-cyan: #00f3ff;
             --neon-cyan-code: #6ef8ff;
+            --neon-verdoso: #00ff99;
             --neon-pink: #ff00ff;
             --neon-purple: #bc13fe;
             --neon-blue: #0066ff;
             --neon-yellow: #ffff00;
+            --neon-orange: #ff6e00;
             --text-primary: #ffffff;
             --text-secondary: #8892b0;
             --glass-bg: rgba(18, 18, 26, 0.9);
@@ -246,11 +248,11 @@
         .model-switch {
             padding: 0.3rem 0.6rem;
             background: rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--glass-border);
+            border: 2px solid rgba(0, 255, 153, 0.3);
             border-radius: 20px;
-            color: var(--neon-cyan);
+            color: var(--neon-verdoso);
             font-family: 'Orbitron', monospace;
-            font-size: 1rem;
+            font-size: 0.7rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -263,8 +265,8 @@
         }
 
         .model-switch.compound {
-            color: var(--neon-pink);
-            border-color: rgba(255, 0, 255, 0.3);
+            color: var(--neon-orange);
+            border-color: rgba(255, 86, 0, 0.3);
         }
 
         .sidebar {
@@ -1009,8 +1011,8 @@
         
         const MODELS = {
             // Deprecated: 
-            'openai/gpt-oss-120b': { shortName: 'GPT-OSS', fullName: 'GPT-OSS-120b' },
-            'groq/compound': { shortName: 'CMP', fullName: 'COMPOUND' }
+            'openai/gpt-oss-120b': { shortName: 'GPT-OSS', htmlName: 'GPT<br>OSS', fullName: 'GPT-OSS-120b' },
+            'groq/compound': { shortName: 'CMP', htmlName: 'CMP', fullName: 'COMPOUND' }
         };
         
         let currentModel = localStorage.getItem(MODEL_STORAGE) || modelo_default;
@@ -1068,7 +1070,8 @@
 
         function updateModelSwitch() {
             const btn = document.getElementById('modelSwitch');
-            btn.textContent = MODELS[currentModel].shortName;
+            //btn.textContent = MODELS[currentModel].shortName;
+            btn.innerHTML = MODELS[currentModel].htmlName;
             btn.classList.toggle('compound', currentModel === 'groq/compound');
         }
 
