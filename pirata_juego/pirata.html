@@ -8,10 +8,14 @@
         body, html { margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: 'Segoe UI', sans-serif;}
         canvas { display: block; background: #f3d9b1; }
         
-        #top-right-ui { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: none; z-index: 10; }
+        #top-right-ui { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; align-items: center; pointer-events: none; z-index: 10; }
         .stats-box { background: rgba(0,0,0,0.64); padding: 10px 15px; border-radius: 12px; border: 2px solid #f1c40f; color: white; pointer-events: auto; }
         #health-bar-container { width: auto; height: 10px; background: #444; border-radius: 5px; border: 1px solid white; overflow: hidden; margin-top: 5px; }
         #health-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #e74c3c, #2ecc71); }
+
+
+        .playBtn { background: rgba(241, 196, 15, 0.7); border: 3px solid #8b4513; border-radius: 50%; width: 38px; height: 38px; font-size: 16px; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 0 #8b4513; transition: 0.1s; }
+
 
         .btn-ui { background: rgba(241, 196, 15, 0.7); border: 3px solid #8b4513; border-radius: 50%; width: 50px; height: 50px; font-size: 28px; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 0 #8b4513; transition: 0.1s; }
         .btn-ui:active { transform: translateY(4px); box-shadow: none; }
@@ -56,6 +60,7 @@
 <div id="damage-overlay"></div>
 
 <div id="top-right-ui">
+    <button id="playBtn" class="playBtn no-select" onclick="musica_de_fondo('reproducir')">🎵</button>
     <div class="stats-box no-select">
         <div>💰 Oro: <span id="gold">0</span> | ⚓ Nivel: <span id="level">1</span></div>
         <div id="health-bar-container"><div id="health-bar"></div></div>
@@ -89,12 +94,13 @@
         🏝️ Ve a la orilla para bajarte.<br><br>
         🦈☠️ ¡Cuidado con los tiburones!<br><br>
         🌵☠️ Cuidado con las plantas venenosas!
+        🌵☠️ Cuidado con la lluvia ácida (los sombreros te protegen)!
     </p>
     <button onclick="toggleHelp()" style="width:100%; padding:10px; font-size: 1rem;">¡Entendido!</button>
 </div>
 
 <div id="game-over">
-    <h1>☠️ ¡DEVORADO! ☠️</h1>
+    <h1>☠️ ¡Te has morido! ☠️</h1>
     <button onclick="location.reload()" style="padding:15px 30px; cursor:pointer; font-size:18px">Reintentar</button>
 </div>
 
@@ -103,6 +109,8 @@
 <script>
 
 const menu_juego = document.getElementById("top-right-ui");
+const audioBtn = document.getElementById('playBtn');
+const pista = new Audio('pirtata_musica1.mp3');
 
 //detecto estoy en el movil
 const esMovil = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
@@ -132,6 +140,9 @@ let escalarpalmera = 0.2 * escalaMovil; //tamaño de la planta en proporción co
 let waterPattern1; //pattern para el agua
 let waterPattern2; //pattern para el agua
 let arenaPattern; //pattern para el agua
+let nube1_tamanioX; //preparo variable
+let nube1_tamanioY; //preparo variable
+let escalarnube1 = 0.2 * escalaMovil; //tamaño de la planta en proporción con tamaño de assets originales
 
 //creo canvas
 const canvas = document.getElementById('gameCanvas');
@@ -177,6 +188,9 @@ function loadAsset(name, src) {
             waterPattern2 = ctx.createPattern(assets.waterpattern2, 'repeat');
         } else if (name == "arena") {
             arenaPattern = ctx.createPattern(assets.arena, 'repeat');
+        } else if (name == "nube1"){
+            nube1_tamanioX = assets['nube1'].width * escalarnube1;
+            nube1_tamanioY = assets['nube1'].height * escalarnube1;
         }
         assetsLoaded++;
         if (assetsLoaded === totalAssets) {
@@ -202,6 +216,8 @@ loadAsset('palmera', 'assets/palmera.png');
 loadAsset('waterpattern1', 'assets/water_pattern1.jpg');
 loadAsset('waterpattern2', 'assets/water_pattern2.jpg');
 loadAsset('arena', 'assets/arena.jpg');
+loadAsset('nube1', 'assets/nube_1.png');
+loadAsset('nube2', 'assets/nube_2.png');
 
 
 const INTERVALO_LOGICA = 1000 / 60;   // 60 lógicas x seg
@@ -292,22 +308,36 @@ function playSound(type) {
         osc.start(now);
         osc.stop(now + 0.36);
     } else if (type == 'compraNO') {
-osc.type = 'square';
+        osc.type = 'square';
 
-// primer beep
-osc.frequency.setValueAtTime(420, now);
-gain.gain.setValueAtTime(0.001, now);
-gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
-gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        // primer beep
+        osc.frequency.setValueAtTime(420, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
-// segundo beep más grave
-osc.frequency.setValueAtTime(260, now + 0.1);
-gain.gain.setValueAtTime(0.001, now + 0.1);
-gain.gain.exponentialRampToValueAtTime(0.22, now + 0.11);
-gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        // segundo beep más grave
+        osc.frequency.setValueAtTime(260, now + 0.1);
+        gain.gain.setValueAtTime(0.001, now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
-osc.start(now);
-osc.stop(now + 0.22);
+        osc.start(now);
+        osc.stop(now + 0.22);
+            }
+}
+
+function musica_de_fondo(accion){
+    game.musica = false; //evito que se llame a la función cada vez que toco canvas
+    if (accion == "reproducir"){
+        if(pista.currentTime > 0){ 
+            pista.currentTime = 0; // opcional: reiniciar
+            pista.pause();
+            return
+        }
+        pista.volume = 0.4;
+        pista.currentTime = 0; // opcional: reiniciar
+        pista.play();
     }
 }
 
@@ -336,8 +366,10 @@ let game = {
         digOnArrival: false      // Flag para cavar al llegar
     },
     boats: [], lakes: [], obstacles: [], particles: [], pets: [], sharks: [], keys: {},
-    treasure: { x: 0, y: 0 }, feedback: { timer: 0, x:0, y:0 },
+    treasure: { "x": 0, "y": 0 }, feedback: { timer: 0, x:0, y:0 },
     frame: 0, //para usar con animaciones, se actualiza en update()
+    nube: {"x": 0, "y": 0, "activa": true, "direccion": 1, "tiempo_entre_nubes": 7 + Math.floor(Math.random() * 6), "ultima_nube": new Date().getTime()}, //posición actual y estado
+    musica: true, //true para inicializar la musica cuando se toca canvas por primera vez
     debug: {treasure: {show: false}}
 };
 
@@ -345,6 +377,9 @@ function updateAnimation() {
     let p = game.player;
 
     let isMoving = game.input.up || game.input.down || game.input.left || game.input.right || p.isMovingToTarget;
+
+    //reproduzco música de fondo recién cuando el usuario apretó alguna tecla o click en canvas
+    if (game.musica && isMoving) {musica_de_fondo("reproducir")}
 
     //chequeo estado de movimiento procesado por processInput() 
     // Si el jugador presiona espacio, activamos un temporizador de "cavando"
@@ -376,6 +411,9 @@ function updateAnimation() {
             p.currentFrame = p.currentFrame % 2;
         }
     }
+
+    // Chequeo participación de nubes
+    nubes();
 }
 
 function isWater(x, y) {
@@ -384,6 +422,9 @@ function isWater(x, y) {
 }
 
 function initLevel() {
+    // Reproduzco música de fondo
+    //musica_de_fondo("reproducir");
+
     game.lakes = []; game.boats = []; game.obstacles = []; game.sharks = [];
     const margin = 50; 
     let lakeRadius = Math.sqrt((canvas.width * canvas.height * 0.25) / Math.PI);
@@ -545,6 +586,7 @@ window.addEventListener('keyup', e => keys[e.code] = false);
 function update() {
     if(!game.active) return;
 
+
     if(game.invuln > 0) game.invuln--;
 
     // Actualizar frame global (animación constante)
@@ -686,6 +728,9 @@ function update() {
     game.obstacles.forEach(ob => {
         if(ob.type === 'poison' && Math.hypot(game.player.x - ob.x, game.player.y - ob.y) < 20) triggerDamage();
     });
+
+    // Nube ácida, solo si está fuera del agua
+    if(game.player.boatIdx !== 0 && Math.hypot(game.player.x - (game.nube.x + nube1_tamanioX /2), game.player.y - (game.nube.y + personaje_tamanioY/2 + nube1_tamanioY/2)) < 60) triggerDamage();
 
     if(game.hp <= 0) { game.active = false; document.getElementById('game-over').style.display = 'flex'; }
     game.particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--; if(p.life <= 0) game.particles.splice(i, 1); });
@@ -836,6 +881,7 @@ function render() {
         // Agua
         const waterPattern = Math.floor(game.frame /25) % 2 === 0 ? waterPattern1 : waterPattern2; //selecciono fotograma correspondiente
 
+
         ctx.fillStyle = waterPattern || '#3db0fd';
         ctx.beginPath();
 
@@ -937,6 +983,27 @@ function render() {
 
         ctx.restore();  // ← Restaurar estado
     });
+
+
+    // Dibujo Nubes
+    if (game.nube["activa"]) { //chequeo nube está activa
+        ctx.save();
+        let current_posX_nube = game.nube["x"] + game.nube["direccion"]; game.nube["x"] = current_posX_nube;
+        const current_asset_nube = (Math.floor(game.frame /25) % 2 === 0) ? assets.nube1 : assets.nube2;
+
+        let nube_altura_deltaY = Math.floor( (game.player.y - nube1_tamanioY/2) - game.nube["y"] );
+        let nube_direccion = 0;
+        if (nube_altura_deltaY > 0){nube_direccion = 1};
+        if (nube_altura_deltaY < 0){nube_direccion = -1};
+        // console.log(nube_altura_deltaY, nube_direccion);
+        let nube_altura = game.nube["y"] + (nube_direccion * game.frame % 2);
+        game.nube["y"] = nube_altura;
+
+        ctx.drawImage(current_asset_nube, current_posX_nube, nube_altura, nube1_tamanioX, nube1_tamanioY);
+        ctx.restore();  // ← Restaurar estado
+
+        //console.log(current_posX_nube);
+    }
 
     // Dibujar tesoro (testing)
     if (game.debug.treasure.show == true){
@@ -1055,7 +1122,7 @@ function isInMargin(x, y){
 canvas.addEventListener('click', (e) => { //orig: pointerdown
     // Ignorar si el toque es en UI (botones, modales)
     if (e.target !== canvas) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const touchX = e.clientX - rect.left;
     const touchY = e.clientY - rect.top;
@@ -1068,7 +1135,42 @@ canvas.addEventListener('click', (e) => { //orig: pointerdown
     
     // Opcional: Mostrar indicador visual de destino
     showTargetMarker(touchX, touchY);
+
 });
+
+// Manejo de nubes
+function nubes(){
+    if (game.level < 0 ){return; } // salgo si no hay nubes para este nivel
+
+    // console.log(game.nube["activa"]);
+
+    if (game.nube["activa"] === true){
+        if(game.nube["x"] <= -15 - nube1_tamanioX || game.nube["x"] >= 15 + canvas.width){
+            game.nube["activa"] = false;
+            game.nube["ultima_nube"] = new Date().getTime();
+            game.nube["tiempo_entre_nubes"] =  7 + Math.floor(Math.random() * 6); //nuevo valor random para la proxima, entre 7 y 12
+            game.nube["direccion"] = Math.random() < 0.5 ? -1 : 1; //Nuva dirección
+            if (game.nube["direccion"] == 1){
+                game.nube["x"] = -5 - nube1_tamanioX; //posiciono al extremo izquierdo
+            } else {
+                game.nube["x"] = 5 + canvas.width; //posiciono al extremo derecho
+            }
+        }       
+        return;  // salgo
+    }
+
+    // chequeo si pasaron los segundos establecidos desde la nube anterior
+    let tiempo_actual = new Date().getTime();
+    let msegundos_dif = tiempo_actual - game.nube["ultima_nube"];
+    let segundos_dif = Math.floor(msegundos_dif /1000); //console.log(segundos_dif);
+    if (segundos_dif < game.nube["tiempo_entre_nubes"]){
+        return; //salgo si todavía no toca aparecer una nube
+    } else {
+        console.log("activando nube");
+        game.nube["activa"] = true; //activo nube
+        game.nube["y"] = game.player.y - nube1_tamanioY/2; // Coloco la nube a la altura actual del jugador
+    }
+}
 </script>
 </body>
 </html>
