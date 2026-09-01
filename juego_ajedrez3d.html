@@ -1,0 +1,2794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ajedrez 3D Multijugador</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2299%22 fill=%22red%22 stroke=%22black%22 stroke-width=%224%22 style=%22paint-order:stroke%22>♞</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0f;color:#e8e8ea;user-select:none;-webkit-user-select:none}
+#app{width:100%;height:100%;position:relative}
+canvas{display:block;touch-action:none}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:10;background:#14141e;overflow-y:auto}
+.screen.hidden{display:none}
+.logo{font-size:clamp(32px,8vw,56px);font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#f0d9b5 0%,#b58863 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.subtitle{font-size:clamp(12px,3vw,16px);color:#8a8aa0;margin-bottom:32px;text-align:center;letter-spacing:2px;text-transform:uppercase}
+.panel{background:#1c1c28;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
+.btn{min-height:52px;padding:14px 20px;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;letter-spacing:0.3px;transition:transform 0.1s}
+.btn-primary{background:#a87f4f;color:#fff}
+.btn-primary:active{transform:scale(0.97)}
+.btn-secondary{background:#262633;color:#e8e8ea;border:1px solid rgba(255,255,255,0.08)}
+.btn-secondary:active{transform:scale(0.97)}
+.btn-danger{background:#3a1f1f;color:#f87171;border:1px solid rgba(239,68,68,0.2)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.input{width:100%;padding:14px 16px;border-radius:12px;background:#0f0f17;border:1px solid rgba(255,255,255,0.1);color:#e8e8ea;font-size:15px;font-family:inherit}
+.input:focus{outline:none;border-color:#a87f4f}
+.divider{display:flex;align-items:center;gap:12px;margin:8px 0;color:#8a8aa0;font-size:12px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:rgba(255,255,255,0.08)}
+textarea{resize:none;min-height:80px;padding:12px;border-radius:12px;background:#0f0f17;border:1px solid rgba(255,255,255,0.1);color:#e8e8ea;font-family:monospace;font-size:10px;line-height:1.4;word-break:break-all}
+textarea:focus{outline:none;border-color:#a87f4f}
+.step-indicator{display:flex;gap:8px;margin-bottom:16px;justify-content:center}
+.step{width:8px;height:8px;border-radius:50%;background:#333}
+.step.active{background:#a87f4f}
+.step.done{background:#22c55e}
+.game-screen{display:none;position:absolute;inset:0}
+.game-screen.active{display:block}
+#gameCanvas{position:absolute;inset:0;background:#0a0a12}
+.hud{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
+.hud-panel{background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;pointer-events:auto;min-width:130px}
+.player-info{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.player-dot.white{background:#f0d9b5}
+.player-dot.black{background:#0d0d0d;border:1px solid #555}
+.status-tag{font-size:10px;padding:2px 8px;border-radius:6px;margin-left:auto;text-transform:uppercase;letter-spacing:0.5px;font-weight:700}
+.status-tag.turn{background:#3a2f1f;color:#d4a574}
+.status-tag.waiting{background:#22222e;color:#8a8aa0}
+.status-tag.spectator{background:#1f1f3a;color:#818cf8}
+.connection-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;border:2px solid #22c55e;margin-right:6px;display:inline-block;vertical-align:middle;flex-shrink:0}
+.connection-dot.offline{background:transparent}
+.connection-dot.disconnected{background:#ef4444;border-color:#ef4444}
+.connection-dot.pending{background:#f59e0b;border-color:#f59e0b;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.bottom-bar{position:absolute;bottom:0;left:0;right:0;padding:12px;display:flex;gap:8px;z-index:5;pointer-events:none}
+.bottom-bar .btn{pointer-events:auto;flex:1;min-height:48px;font-size:26px;line-height:1;padding:10px 8px}
+.history{position:absolute;right:12px;top:80px;bottom:80px;width:180px;background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;overflow-y:auto;z-index:5;display:none}
+.history.visible{display:block}
+.history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal.visible{display:flex}
+.modal-box{background:#1a1a26;border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center}
+.modal-title{font-size:32px;font-weight:800;margin-bottom:8px}
+.modal-title.victory{color:#fbbf24}
+.modal-title.defeat{color:#ef4444}
+.modal-title.draw{color:#8a8aa0}
+.modal-subtitle{color:#8a8aa0;margin-bottom:24px;font-size:14px}
+.promo-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);z-index:90;align-items:center;justify-content:center}
+.promo-modal.visible{display:flex}
+.promo-box{background:#1a1a26;border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:16px;display:flex;gap:12px}
+.promo-piece{width:60px;height:60px;background:#262633;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid transparent}
+.promo-piece:active{background:#3a2f1f;border-color:#a87f4f}
+.toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#0f0f17;border:1px solid rgba(255,255,255,0.1);padding:12px 20px;border-radius:12px;font-size:14px;z-index:200;opacity:0;transition:opacity 0.2s;pointer-events:none;max-width:90%;text-align:center}
+.toast.visible{opacity:1}
+.toast.error{border-color:#ef4444;color:#f87171}
+.fallback-board{display:none;grid-template-columns:repeat(8,1fr);width:min(90vw,400px);aspect-ratio:1;border:3px solid #444;border-radius:4px}
+.fallback-board.visible{display:grid}
+.fallback-cell{position:relative;display:flex;align-items:center;justify-content:center;font-size:min(10vw,40px);cursor:pointer;font-weight:700}
+.fallback-cell.light{background:#f0d9b5;color:#000}
+.fallback-cell.dark{background:#b58863;color:#000}
+.fallback-cell.selected{box-shadow:inset 0 0 0 4px #ffd700}
+.fallback-cell.legal::after{content:"";position:absolute;width:30%;height:30%;background:rgba(0,0,0,0.3);border-radius:50%}
+.fallback-piece-w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000}
+.fallback-piece-b{color:#000}
+@media (max-width:480px){.panel{padding:18px}.btn{min-height:48px;font-size:14px}.hud-panel{min-width:110px;padding:8px 10px}}
+.loader{width:40px;height:40px;border:3px solid rgba(168,127,79,0.2);border-top-color:#a87f4f;border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.no-webgl{color:#ef4444;text-align:center;padding:12px;background:rgba(239,68,68,0.1);border-radius:12px;font-size:13px;margin-bottom:16px}
+.quality-badge{position:absolute;top:12px;right:12px;background:rgba(15,15,23,0.9);padding:4px 10px;border-radius:8px;font-size:10px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;z-index:6;pointer-events:auto;cursor:pointer;border:1px solid rgba(255,255,255,0.05);user-select:none;transition:color 0.15s,border-color 0.15s}
+.quality-badge:active{color:#d4a574;border-color:rgba(168,127,79,0.4)}
+.info-box{background:#1a2a1a;border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:12px;font-size:13px;color:#86efac;margin-top:8px}
+.warn-box{background:#2a2a1a;border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:12px;font-size:13px;color:#fcd34d;margin-top:8px}
+.reconnect-banner{background:#1f2937;border:1px solid rgba(99,102,241,0.3);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center}
+.reconnect-banner h3{color:#a5b4fc;margin-bottom:8px;font-size:16px}
+.reconnect-banner p{color:#9ca3af;font-size:13px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="homeScreen" class="screen">
+  <div class="logo">♛ Ajedrez 3D</div>
+  <div class="subtitle">Multijugador · P2P</div>
+  <div id="noWebglMsg" class="no-webgl" style="display:none">WebGL no disponible. Se usará el modo 2D.</div>
+  
+  <!-- Banner de reconexión (visible si hay sesión activa) -->
+  <div class="reconnect-banner" id="reconnectBanner" style="display:none">
+    <h3>🔄 Partida en curso detectada</h3>
+    <p>Se encontró una partida multijugador guardada. ¿Deseas reconectar?</p>
+    <button class="btn btn-primary" id="btnReconnect" style="width:100%">Reconectar partida</button>
+    <button class="btn btn-secondary" id="btnDiscardSession" style="width:100%;margin-top:8px">Descartar y empezar de nuevo</button>
+  </div>
+  
+  <div class="panel" id="mainPanel">
+    <button class="btn btn-primary" id="btnCreateRoom">✦ Crear sala</button>
+    <button class="btn btn-secondary" id="btnPlayAI">♟ Jugar contra ordenador</button>
+    <div class="divider">o</div>
+    <button class="btn btn-secondary" id="btnShowJoin">Unirse a sala</button>
+  </div>
+  <div class="panel" id="joinPanel" style="display:none">
+    <input class="input" id="inputRoomCode" placeholder="Código de sala (ej: k7f2m9)" maxlength="10" autocapitalize="off" autocomplete="off" style="text-align:center;font-size:20px;letter-spacing:4px">
+    <button class="btn btn-secondary" id="btnPasteCode" type="button">📋 Pegar código</button>
+    <button class="btn btn-primary" id="btnJoinRoom">Unirse a la partida</button>
+    <button class="btn btn-secondary" id="btnBackHome">← Volver</button>
+  </div>
+</div>
+
+<div id="roomScreen" class="screen hidden">
+  <div class="logo" style="font-size:clamp(24px,6vw,40px)">Sala P2P</div>
+  <div class="subtitle" id="roomSubtitle">Configurando conexión...</div>
+  
+  <div class="panel" id="signalingPanel">
+
+    <!-- HOST VIEW: muestra el código de sala a compartir -->
+    <div id="hostView" style="display:none;text-align:center">
+      <div style="font-size:13px;color:#8a8aa0;margin-bottom:10px">Comparte este código con tu oponente:</div>
+      <div id="roomCodeDisplay" style="font-size:30px;font-weight:800;letter-spacing:5px;background:#0f0f17;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px;margin-bottom:12px"></div>
+      <button class="btn btn-secondary" id="btnCopyOffer">📋 Copiar código</button>
+      <div class="warn-box" id="waitingHostMsg" style="margin-top:16px">
+        ⏳ Esperando a que tu oponente se una...<br>
+        <small>La conexión se establece automáticamente, sin pasos adicionales.</small>
+      </div>
+    </div>
+
+    <!-- CONNECTING VIEW -->
+    <div id="connectingView" style="display:none;text-align:center">
+      <div class="loader"></div>
+      <div style="color:#8a8aa0;font-size:14px" id="connectingMsg">Estableciendo conexión P2P...</div>
+    </div>
+
+    <!-- CONNECTED VIEW -->
+    <div id="connectedView" style="display:none;text-align:center">
+      <div style="font-size:48px;margin:16px 0">🎮</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px">¡Conectado!</div>
+      <div style="color:#8a8aa0;font-size:14px;margin-bottom:16px" id="colorAssignMsg"></div>
+      <button class="btn btn-primary" id="btnStartGame">Empezar partida</button>
+    </div>
+
+    <!-- ERROR VIEW -->
+    <div id="errorView" style="display:none;text-align:center">
+      <div style="font-size:48px;margin:16px 0">⚠️</div>
+      <div style="color:#f87171;font-size:14px;margin-bottom:16px" id="errorMsg">Error de conexión</div>
+      <button class="btn btn-secondary" id="btnRetry">Intentar de nuevo</button>
+    </div>
+
+    <button class="btn btn-danger" id="btnLeaveRoom" style="margin-top:12px">Salir de la sala</button>
+  </div>
+</div>
+
+<div id="gameScreen" class="game-screen">
+  <canvas id="gameCanvas"></canvas>
+  <div class="quality-badge" id="qualityBadge"></div>
+  <div class="hud">
+    <div class="hud-panel">
+      <div class="player-info"><span class="connection-dot" id="whiteConnDot"></span><span class="player-dot white"></span><span>Blancas</span><span class="status-tag" id="whiteStatus">—</span></div>
+      <div class="player-info" style="margin-top:6px"><span class="connection-dot" id="blackConnDot"></span><span class="player-dot black"></span><span>Negras</span><span class="status-tag" id="blackStatus">—</span></div>
+      <div style="font-size:11px;color:#8a8aa0;margin-top:8px" id="gameStateInfo">En juego</div>
+    </div>
+  </div>
+  <div class="history" id="historyPanel">
+    <div class="history-title">Movimientos</div>
+    <div id="historyList"></div>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn btn-secondary" id="btnResetCamera">⟲</button>
+    <button class="btn btn-secondary" id="btnFlipBoard">↕</button>
+    <button class="btn btn-secondary" id="btnToggleHistory">📜</button>
+    <button class="btn btn-danger" id="btnResign">⚐</button>
+  </div>
+  <div id="toast" class="toast"></div>
+</div>
+
+<div id="promoModal" class="promo-modal">
+  <div class="promo-box">
+    <div class="promo-piece" data-piece="q">♛</div>
+    <div class="promo-piece" data-piece="r">♜</div>
+    <div class="promo-piece" data-piece="b">♝</div>
+    <div class="promo-piece" data-piece="n">♞</div>
+  </div>
+</div>
+
+<div id="endModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="endTitle">—</div>
+    <div class="modal-subtitle" id="endSubtitle">—</div>
+    <button class="btn btn-primary" id="btnNewGame" style="margin-bottom:8px">Nueva partida</button>
+    <button class="btn btn-secondary" id="btnExitRoom">Salir de la sala</button>
+  </div>
+</div>
+
+<div id="fallback2D" class="screen hidden">
+  <div class="logo" style="font-size:32px">Modo 2D</div>
+  <div class="fallback-board" id="fallbackBoard"></div>
+  <div style="margin-top:16px;color:#8a8aa0;font-size:13px" id="fallbackInfo">Turno: Blancas</div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="module">
+"use strict";
+import {joinRoom, selfId} from 'https://esm.run/trystero';
+const TRYSTERO_APP_ID = 'ajedrez3d-p2p-chess-v1';
+
+/* =====================================================================
+   DETECCIÓN DE DISPOSITIVO Y CALIDAD
+   ===================================================================== */
+const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const IS_LOW_END = IS_MOBILE && (navigator.hardwareConcurrency <= 4);
+const QUALITY = IS_LOW_END ? 'low' : (IS_MOBILE ? 'medium' : 'high');
+const CFG = {
+  low:    { pr: 1,   shadowSize: 256, latheSeg: 10, shadows: false, labels: false, antialias: false },
+  medium: { pr: 1.5, shadowSize: 384, latheSeg: 14, shadows: true,  labels: false, antialias: false },
+  high:   { pr: Math.min(window.devicePixelRatio, 2), shadowSize: 512, latheSeg: 18, shadows: true,  labels: true,  antialias: true }
+}[QUALITY];
+
+/* =====================================================================
+   RESOLUCIÓN DE RENDERIZADO (3 niveles, alternables en caliente)
+   El pixel ratio del renderer de Three.js se puede cambiar en cualquier
+   momento (renderer.setPixelRatio), así que esto sí es dinámico, a
+   diferencia de sombras/geometría que se fijan al construir la escena.
+   ===================================================================== */
+const RES_LEVELS = [
+  { label: 'Baja',  pr: 0.75 },
+  { label: 'Media', pr: 1 },
+  // "Alta" no solo iguala el pixel ratio nativo de la pantalla: siempre
+  // renderiza por encima de él (supersampling), así en monitores comunes
+  // (devicePixelRatio 1, la mayoría de las PCs de escritorio) también se
+  // nota una imagen más suave y no queda idéntica a "Media".
+  { label: 'Alta',  pr: Math.max(1.5, Math.min((window.devicePixelRatio || 1) * 1.5, 3)) }
+];
+let resLevelIndex = 1;
+(function(){
+  let minDiff = Infinity;
+  RES_LEVELS.forEach((lvl, i) => {
+    const d = Math.abs(lvl.pr - CFG.pr);
+    if(d < minDiff){ minDiff = d; resLevelIndex = i; }
+  });
+})();
+
+function setResolutionLevel(index){
+  resLevelIndex = ((index % RES_LEVELS.length) + RES_LEVELS.length) % RES_LEVELS.length;
+  const level = RES_LEVELS[resLevelIndex];
+  if(renderer){
+    renderer.setPixelRatio(level.pr);
+    onResize();
+  }
+  const badge = document.getElementById('qualityBadge');
+  if(badge) badge.textContent = level.label.toUpperCase();
+}
+
+/* =====================================================================
+   CHESS ENGINE
+   ===================================================================== */
+class ChessGame {
+  constructor(fen) {
+    this.board = Array.from({length:8},()=>new Array(8).fill(null));
+    this.turn = 'w';
+    this.castling = {K:true,Q:true,k:true,q:true};
+    this.enPassant = null;
+    this.halfmove = 0;
+    this.fullmove = 1;
+    this.history = [];
+    this.positionHistory = [];
+    if (fen) this.loadFEN(fen);
+    else this.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  }
+  loadFEN(fen) {
+    const parts = fen.split(' ');
+    const rows = parts[0].split('/');
+    for (let r = 0; r < 8; r++) {
+      let c = 0;
+      for (const ch of rows[r]) {
+        if (/\d/.test(ch)) c += parseInt(ch);
+        else {
+          this.board[r][c] = {type: ch.toLowerCase(), color: ch===ch.toUpperCase()?'w':'b'};
+          c++;
+        }
+      }
+    }
+    this.turn = parts[1] || 'w';
+    const ca = parts[2] || '-';
+    this.castling = {K:ca.includes('K'),Q:ca.includes('Q'),k:ca.includes('k'),q:ca.includes('q')};
+    this.enPassant = null;
+    if (parts[3] && parts[3] !== '-') {
+      this.enPassant = [8-parseInt(parts[3][1]), parts[3].charCodeAt(0)-97];
+    }
+    this.halfmove = parseInt(parts[4] || 0);
+    this.fullmove = parseInt(parts[5] || 1);
+  }
+  toFEN() {
+    let s = '';
+    for (let r = 0; r < 8; r++) {
+      let empty = 0;
+      for (let c = 0; c < 8; c++) {
+        const p = this.board[r][c];
+        if (!p) empty++;
+        else {
+          if (empty) { s += empty; empty = 0; }
+          s += p.color==='w' ? p.type.toUpperCase() : p.type;
+        }
+      }
+      if (empty) s += empty;
+      if (r < 7) s += '/';
+    }
+    s += ' ' + this.turn + ' ';
+    let ca = '';
+    if (this.castling.K) ca += 'K';
+    if (this.castling.Q) ca += 'Q';
+    if (this.castling.k) ca += 'k';
+    if (this.castling.q) ca += 'q';
+    s += (ca || '-');
+    s += ' ';
+    if (this.enPassant) s += String.fromCharCode(97+this.enPassant[1]) + (8-this.enPassant[0]);
+    else s += '-';
+    s += ' ' + this.halfmove + ' ' + this.fullmove;
+    return s;
+  }
+  at(r,c){return (r>=0&&r<8&&c>=0&&c<8)?this.board[r][c]:undefined;}
+  findKing(color){
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+      const p=this.board[r][c];
+      if(p&&p.type==='k'&&p.color===color)return[r,c];
+    }
+    return null;
+  }
+  isSquareAttacked(r,c,byColor){
+    const dir = byColor==='w'?1:-1;
+    for(const dc of[-1,1]){
+      const p=this.at(r+dir,c+dc);
+      if(p&&p.color===byColor&&p.type==='p')return true;
+    }
+    const nm=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    for(const[dr,dc]of nm){
+      const p=this.at(r+dr,c+dc);
+      if(p&&p.color===byColor&&p.type==='n')return true;
+    }
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+      if(!dr&&!dc)continue;
+      const p=this.at(r+dr,c+dc);
+      if(p&&p.color===byColor&&p.type==='k')return true;
+    }
+    const orth=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(const[dr,dc]of orth){
+      let rr=r+dr,cc=c+dc;
+      while(rr>=0&&rr<8&&cc>=0&&cc<8){
+        const p=this.board[rr][cc];
+        if(p){if(p.color===byColor&&(p.type==='r'||p.type==='q'))return true;break;}
+        rr+=dr;cc+=dc;
+      }
+    }
+    const diag=[[1,1],[1,-1],[-1,1],[-1,-1]];
+    for(const[dr,dc]of diag){
+      let rr=r+dr,cc=c+dc;
+      while(rr>=0&&rr<8&&cc>=0&&cc<8){
+        const p=this.board[rr][cc];
+        if(p){if(p.color===byColor&&(p.type==='b'||p.type==='q'))return true;break;}
+        rr+=dr;cc+=dc;
+      }
+    }
+    return false;
+  }
+  inCheck(color){
+    const k=this.findKing(color);
+    return k&&this.isSquareAttacked(k[0],k[1],color==='w'?'b':'w');
+  }
+  pseudoMoves(color){
+    const moves=[];
+    const opp=color==='w'?'b':'w';
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+      const p=this.board[r][c];
+      if(!p||p.color!==color)continue;
+      const t=p.type;
+      if(t==='p'){
+        const dir=color==='w'?-1:1;
+        const sr=color==='w'?6:1;
+        const pr=color==='w'?0:7;
+        if(!this.at(r+dir,c)){
+          if(r+dir===pr)for(const q of['q','r','b','n'])moves.push({from:[r,c],to:[r+dir,c],piece:'p',color,promotion:q});
+          else{
+            moves.push({from:[r,c],to:[r+dir,c],piece:'p',color});
+            if(r===sr&&!this.at(r+2*dir,c))moves.push({from:[r,c],to:[r+2*dir,c],piece:'p',color,doublePawn:true});
+          }
+        }
+        for(const dc of[-1,1]){
+          const tr=r+dir,tc=c+dc;
+          if(tc<0||tc>7)continue;
+          const tp=this.at(tr,tc);
+          if(tp&&tp.color===opp){
+            if(tr===pr)for(const q of['q','r','b','n'])moves.push({from:[r,c],to:[tr,tc],piece:'p',color,capture:true,promotion:q});
+            else moves.push({from:[r,c],to:[tr,tc],piece:'p',color,capture:true});
+          }
+          if(this.enPassant&&this.enPassant[0]===tr&&this.enPassant[1]===tc){
+            moves.push({from:[r,c],to:[tr,tc],piece:'p',color,capture:true,enPassant:true});
+          }
+        }
+      } else if(t==='n'){
+        const nm=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+        for(const[dr,dc]of nm){
+          const tr=r+dr,tc=c+dc;
+          if(tr<0||tr>7||tc<0||tc>7)continue;
+          const tp=this.at(tr,tc);
+          if(!tp)moves.push({from:[r,c],to:[tr,tc],piece:'n',color});
+          else if(tp.color===opp)moves.push({from:[r,c],to:[tr,tc],piece:'n',color,capture:true});
+        }
+      } else if(t==='k'){
+        for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+          if(!dr&&!dc)continue;
+          const tr=r+dr,tc=c+dc;
+          if(tr<0||tr>7||tc<0||tc>7)continue;
+          const tp=this.at(tr,tc);
+          if(!tp)moves.push({from:[r,c],to:[tr,tc],piece:'k',color});
+          else if(tp.color===opp)moves.push({from:[r,c],to:[tr,tc],piece:'k',color,capture:true});
+        }
+        const row=color==='w'?7:0;
+        const ck=color==='w'?'K':'k',cq=color==='w'?'Q':'q';
+        if(r===row&&c===4&&!this.inCheck(color)){
+          if(this.castling[ck]&&!this.at(row,5)&&!this.at(row,6)&&this.at(row,7)&&this.at(row,7).type==='r'&&this.at(row,7).color===color){
+            if(!this.isSquareAttacked(row,5,opp)&&!this.isSquareAttacked(row,6,opp))
+              moves.push({from:[r,c],to:[row,6],piece:'k',color,castle:'K'});
+          }
+          if(this.castling[cq]&&!this.at(row,3)&&!this.at(row,2)&&!this.at(row,1)&&this.at(row,0)&&this.at(row,0).type==='r'&&this.at(row,0).color===color){
+            if(!this.isSquareAttacked(row,3,opp)&&!this.isSquareAttacked(row,2,opp))
+              moves.push({from:[r,c],to:[row,2],piece:'k',color,castle:'Q'});
+          }
+        }
+      } else {
+        const dirs=[];
+        if(t==='r'||t==='q')dirs.push([1,0],[-1,0],[0,1],[0,-1]);
+        if(t==='b'||t==='q')dirs.push([1,1],[1,-1],[-1,1],[-1,-1]);
+        for(const[dr,dc]of dirs){
+          let tr=r+dr,tc=c+dc;
+          while(tr>=0&&tr<8&&tc>=0&&tc<8){
+            const tp=this.board[tr][tc];
+            if(!tp)moves.push({from:[r,c],to:[tr,tc],piece:t,color});
+            else{if(tp.color===opp)moves.push({from:[r,c],to:[tr,tc],piece:t,color,capture:true});break;}
+            tr+=dr;tc+=dc;
+          }
+        }
+      }
+    }
+    return moves;
+  }
+  legalMoves(color=this.turn){
+    const pseudo=this.pseudoMoves(color);
+    const legal=[];
+    for(let i=0;i<pseudo.length;i++){
+      const m=pseudo[i];
+      const saved=this._applyMoveFast(m);
+      if(!this.inCheck(color))legal.push(m);
+      this._undoFast(saved);
+    }
+    return legal;
+  }
+  _applyMoveFast(m){
+    const s={};
+    const piece=this.board[m.from[0]][m.from[1]];
+    s.from={r:m.from[0],c:m.from[1],p:piece};
+    s.to={r:m.to[0],c:m.to[1],p:this.board[m.to[0]][m.to[1]]};
+    s.epPiece=null;
+    if(m.enPassant){
+      s.epPiece={r:m.from[0],c:m.to[1],p:this.board[m.from[0]][m.to[1]]};
+      this.board[m.from[0]][m.to[1]]=null;
+    }
+    this.board[m.from[0]][m.from[1]]=null;
+    if(m.promotion)this.board[m.to[0]][m.to[1]]={type:m.promotion,color:piece.color};
+    else this.board[m.to[0]][m.to[1]]=piece;
+    s.rook=null;
+    if(m.castle){
+      const row=m.from[0];
+      if(m.castle==='K'){
+        s.rook={from:[row,7],to:[row,5],p:this.board[row][7]};
+        this.board[row][5]=this.board[row][7];
+        this.board[row][7]=null;
+      } else {
+        s.rook={from:[row,0],to:[row,3],p:this.board[row][0]};
+        this.board[row][3]=this.board[row][0];
+        this.board[row][0]=null;
+      }
+    }
+    s.turn=this.turn;
+    this.turn=this.turn==='w'?'b':'w';
+    return s;
+  }
+  _undoFast(s){
+    this.turn=s.turn;
+    this.board[s.from.r][s.from.c]=s.from.p;
+    this.board[s.to.r][s.to.c]=s.to.p;
+    if(s.epPiece)this.board[s.epPiece.r][s.epPiece.c]=s.epPiece.p;
+    if(s.rook){
+      this.board[s.rook.from[0]][s.rook.from[1]]=s.rook.p;
+      this.board[s.rook.to[0]][s.rook.to[1]]=null;
+    }
+  }
+  movesFrom(r,c){
+    return this.legalMoves().filter(m=>m.from[0]===r&&m.from[1]===c);
+  }
+  makeMove(m){
+    const piece=this.board[m.from[0]][m.from[1]];
+    const rec={move:m,san:this.toSAN(m)};
+    this.board[m.from[0]][m.from[1]]=null;
+    if(m.enPassant)this.board[m.from[0]][m.to[1]]=null;
+    if(m.promotion)this.board[m.to[0]][m.to[1]]={type:m.promotion,color:piece.color};
+    else this.board[m.to[0]][m.to[1]]=piece;
+    if(m.castle){
+      const row=m.from[0];
+      if(m.castle==='K'){this.board[row][5]=this.board[row][7];this.board[row][7]=null;}
+      else{this.board[row][3]=this.board[row][0];this.board[row][0]=null;}
+    }
+    if(piece.type==='k'){
+      if(piece.color==='w'){this.castling.K=false;this.castling.Q=false;}
+      else{this.castling.k=false;this.castling.q=false;}
+    }
+    if(piece.type==='r'){
+      if(m.from[0]===7&&m.from[1]===0)this.castling.Q=false;
+      if(m.from[0]===7&&m.from[1]===7)this.castling.K=false;
+      if(m.from[0]===0&&m.from[1]===0)this.castling.q=false;
+      if(m.from[0]===0&&m.from[1]===7)this.castling.k=false;
+    }
+    if(m.to[0]===7&&m.to[1]===0)this.castling.Q=false;
+    if(m.to[0]===7&&m.to[1]===7)this.castling.K=false;
+    if(m.to[0]===0&&m.to[1]===0)this.castling.q=false;
+    if(m.to[0]===0&&m.to[1]===7)this.castling.k=false;
+    this.enPassant=m.doublePawn?[(m.from[0]+m.to[0])/2,m.from[1]]:null;
+    if(piece.type==='p'||m.capture)this.halfmove=0; else this.halfmove++;
+    if(this.turn==='b')this.fullmove++;
+    this.turn=this.turn==='w'?'b':'w';
+    this.history.push(rec);
+    this.positionHistory.push(this.toFEN().split(' ').slice(0,4).join(' '));
+    return rec;
+  }
+  toSAN(m){
+    const p=this.at(m.from[0],m.from[1]);
+    if(!p)return'';
+    if(m.castle)return m.castle==='K'?'O-O':'O-O-O';
+    let s='';
+    if(p.type!=='p')s+=p.type.toUpperCase();
+    if(p.type==='p'&&m.capture)s+=String.fromCharCode(97+m.from[1]);
+    s+=(m.capture?'x':'')+String.fromCharCode(97+m.to[1])+(8-m.to[0]);
+    if(m.promotion)s+='='+m.promotion.toUpperCase();
+    return s;
+  }
+  status(){
+    const legal=this.legalMoves();
+    const check=this.inCheck(this.turn);
+    if(legal.length===0){
+      if(check)return{over:true,result:'checkmate',winner:this.turn==='w'?'b':'w'};
+      return{over:true,result:'stalemate'};
+    }
+    if(this.halfmove>=100)return{over:true,result:'draw50'};
+    const fenKey=this.toFEN().split(' ').slice(0,4).join(' ');
+    let count=0;
+    for(let i=0;i<this.positionHistory.length;i++)if(this.positionHistory[i]===fenKey)count++;
+    if(count>=3)return{over:true,result:'draw3fold'};
+    const pieces=[];
+    for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(this.board[r][c])pieces.push(this.board[r][c]);
+    if(pieces.length===2)return{over:true,result:'insufficient'};
+    if(pieces.length===3&&pieces.some(p=>p.type==='n'||p.type==='b'))return{over:true,result:'insufficient'};
+    return{over:false,check};
+  }
+}
+
+/* =====================================================================
+   AUDIO
+   ===================================================================== */
+class AudioFX {
+  constructor(){this.ctx=null;this.enabled=true;}
+  init(){try{this.ctx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){this.enabled=false;}}
+  resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();}
+  tone(freq,dur,type='sine',vol=0.12){
+    if(!this.enabled||!this.ctx)return;
+    const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator();
+    const g=this.ctx.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+0.005);
+    g.gain.linearRampToValueAtTime(0,t+dur);
+    o.connect(g);g.connect(this.ctx.destination);
+    o.start(t);o.stop(t+dur+0.02);
+  }
+  select(){this.tone(880,0.04,'square',0.06);}
+  move(){this.tone(520,0.08,'sine',0.1);}
+  capture(){this.tone(200,0.1,'sawtooth',0.12);this.tone(350,0.08,'sine',0.08);}
+  check(){this.tone(1200,0.08,'square',0.1);setTimeout(()=>this.tone(1600,0.12,'square',0.1),80);}
+  illegal(){this.tone(150,0.12,'sawtooth',0.12);}
+  victory(){[523,659,784].forEach((n,i)=>setTimeout(()=>this.tone(n,0.15,'triangle',0.12),i*100));}
+  defeat(){this.tone(200,0.25,'sawtooth',0.12);setTimeout(()=>this.tone(150,0.3,'sawtooth',0.1),180);}
+  draw(){this.tone(440,0.2,'sine',0.1);setTimeout(()=>this.tone(440,0.2,'sine',0.08),220);}
+}
+const audio = new AudioFX();
+
+/* =====================================================================
+   WEBGL DETECTION
+   ===================================================================== */
+function detectWebGL(){
+  try{const c=document.createElement('canvas');return!!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl')));}catch(e){return false;}
+}
+const HAS_WEBGL = detectWebGL();
+if(!HAS_WEBGL)document.getElementById('noWebglMsg').style.display='block';
+
+/* =====================================================================
+   THREE.JS
+   ===================================================================== */
+let scene, camera, renderer, boardGroup, piecesGroup, indicatorsGroup;
+let pieceGeometries = {};
+let whiteMat, blackMat, selectionMat;
+let squareMeshes = {};
+let threeInitialized = false;
+
+const SQ = 1;
+let flipped = false;
+
+function coordToWorld(r, c){
+  const rr = flipped ? 7-r : r;
+  const cc = flipped ? 7-c : c;
+  return { x: (cc - 3.5) * SQ, z: (rr - 3.5) * SQ };
+}
+
+function mergeGeometries(geos){
+  let totalVerts=0;
+  for(const g of geos) totalVerts+=g.attributes.position.count;
+  const pos=new Float32Array(totalVerts*3);
+  const nrm=new Float32Array(totalVerts*3);
+  const idx=[];
+  let vOff=0;
+  for(const g of geos){
+    const p=g.attributes.position.array;
+    const n=g.attributes.normal?g.attributes.normal.array:new Float32Array(p.length);
+    pos.set(p,vOff*3); nrm.set(n,vOff*3);
+    if(g.index){const i=g.index.array;for(let k=0;k<i.length;k++)idx.push(i[k]+vOff);}
+    else for(let k=0;k<g.attributes.position.count;k++)idx.push(k+vOff);
+    vOff+=g.attributes.position.count;
+  }
+  const merged=new THREE.BufferGeometry();
+  merged.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  merged.setAttribute('normal',new THREE.BufferAttribute(nrm,3));
+  merged.setIndex(idx);
+  merged.computeVertexNormals();
+  for(const g of geos)g.dispose();
+  return merged;
+}
+
+// Asumimos que tienes importado mergeGeometries:
+// import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+// ==========================================
+// FUNCIONES AUXILIARES
+// ==========================================
+
+function createLathe(points, segments = 32) {
+    const pts = points.map(p => new THREE.Vector2(p[0], p[1]));
+    const geo = new THREE.LatheGeometry(pts, segments);
+    geo.computeVertexNormals();
+    return geo;
+}
+
+function addCollar(geos, y, radius, tubeRadius) {
+    const torus = new THREE.TorusGeometry(radius, tubeRadius, 12, 32);
+    torus.rotateX(Math.PI / 2); // Aplanar
+    torus.translate(0, y, 0);
+    geos.push(torus);
+}
+
+// ==========================================
+// CABALLO (KNIGHT) - Más esbelto, compacto y con perfil tradicional plano
+// ==========================================
+function buildKnightGeometry() {
+    const geos = [];
+
+    // --------------------------------------
+    // Base
+    // --------------------------------------
+    geos.push(createLathe([
+        [0, 0],
+        [.27, 0],
+        [.36, .035],
+        [.39, .08],
+        [.37, .13],
+        [.30, .17],
+        [.25, .21],
+        [.22, .29],
+        [.22, .36],
+        [0, .39]
+    ]));
+
+    // Zócalo superior
+    geos.push(createLathe([
+        [0, .34],
+        [.21, .34],
+        [.24, .39],
+        [.21, .43],
+        [.14, .46],
+        [0, .47]
+    ]));
+
+    // --------------------------------------
+    // Cuello
+    // --------------------------------------
+    const neck = new THREE.CylinderGeometry(
+        .115, .19, .61, 32, 8
+    );
+
+    // Primero inclinamos el cuello sobre su propio centro
+    neck.rotateX(-.11);
+
+    // Luego lo colocamos de modo que su base
+    // quede exactamente centrada sobre la base
+    neck.translate(0, .74, -.01);
+
+    geos.push(neck);
+
+    // Collar
+    geos.push(createLathe([
+        [0, .97],
+        [.13, .97],
+        [.17, 1.00],
+        [.15, 1.04],
+        [.10, 1.06],
+        [0, 1.06]
+    ]));
+
+    // --------------------------------------
+    // Cabeza rectangular alargada
+    // - Nuca alta y muy redondeada
+    // - Frente más bajo
+    // - Ambos extremos redondeados
+    // --------------------------------------
+
+    const headShape = new THREE.Shape();
+
+    // Perfil lateral:
+    // X negativo = nuca
+    // X positivo = hocico
+
+    headShape.moveTo(-.19, -.11);      // inferior trasero
+    headShape.lineTo( .16, -.11);      // inferior delantero
+
+    // Frente inferior redondeado
+    headShape.quadraticCurveTo(
+        .20, -.15,
+        .20, -.10
+    );
+
+    // Frente: más bajo
+    headShape.lineTo(.20, -.04);
+
+    // Redondeo superior del hocico
+    headShape.quadraticCurveTo(
+        .20, .10,
+        .16, .10
+    );
+
+    // Parte superior, descendiendo ligeramente
+    // desde la nuca hacia el hocico
+    headShape.lineTo(.04, .15);
+    headShape.lineTo(-.09, .19);
+
+    // Nuca alta y mucho más redondeada
+    headShape.quadraticCurveTo(
+        -.17, .21,
+        -.20, .15
+    );
+
+    // Redondeo posterior
+    headShape.quadraticCurveTo(
+        -.21, .05,
+        -.19, -.15
+    );
+
+    const head = new THREE.ExtrudeGeometry(
+        headShape,
+        {
+            depth: .18,
+
+            bevelEnabled: true,
+            bevelThickness: .045,
+            bevelSize: .045,
+            bevelSegments: 6,
+
+            curveSegments: 12
+        }
+    );
+
+    // Convertir el perfil lateral:
+    // X del perfil → Z de la cabeza
+    // Extrusión → ancho X
+    head.rotateY(-Math.PI / 2);
+
+    // Centrar el ancho
+    head.translate(.1, 1.16, .02);
+
+    // Ligera inclinación
+    head.rotateX(.07);
+
+    geos.push(head);
+
+    // --------------------------------------
+    // Cara (Aplanada en los lados)
+    // --------------------------------------
+    const face = new THREE.SphereGeometry(
+        .175, 24, 16
+    );
+
+    face.scale(0.55, 1.0, 1.20);
+    face.translate(0, 1.13, .19);
+    face.rotateX(.04);
+
+    geos.push(face);
+
+    // --------------------------------------
+    // Hocico corto (Aplanado en los lados)
+    // --------------------------------------
+    const muzzle = new THREE.SphereGeometry(
+        .115, 24, 16
+    );
+
+    muzzle.scale(0.50, .72, 1.20);
+    muzzle.translate(0, 1.075, .305);
+
+    geos.push(muzzle);
+
+    // --------------------------------------
+    // Nariz (Aplanada en los lados)
+    // --------------------------------------
+    const nose = new THREE.SphereGeometry(
+        .048, 16, 12
+    );
+
+    nose.scale(0.50, .65, .75);
+    nose.translate(0, 1.065, .39);
+
+    geos.push(nose);
+
+    // --------------------------------------
+    // Oreja izquierda (Aplanada en los lados)
+    // --------------------------------------
+    const earL = new THREE.ConeGeometry(
+        .058, .20, 16
+    );
+    earL.scale(0.50, 1.0, 1.0); // Aplanada lateralmente
+    earL.translate(-.105, 1.42, .015);
+    earL.rotateZ(-.15);
+    earL.rotateX(.05);
+
+    geos.push(earL);
+
+    // --------------------------------------
+    // Oreja derecha (Aplanada en los lados)
+    // --------------------------------------
+    const earR = new THREE.ConeGeometry(
+        .058, .20, 16
+    );
+    earR.scale(0.50, 1.0, 1.0); // Aplanada lateralmente
+    earR.translate(.105, 1.42, .015);
+    earR.rotateZ(.15);
+    earR.rotateX(.05);
+
+    geos.push(earR);
+
+    // --------------------------------------
+    // Crin
+    // --------------------------------------
+    for (let i = 0; i < 6; i++) {
+        const mane = new THREE.SphereGeometry(
+            .065 - i * .005,
+            12,
+            8
+        );
+
+        // Aplanamos la crin en el eje X para que coincida con el perfil de la cabeza
+        mane.scale(.45, 1.15, 1.0);
+
+        // Alineamos la crin justo en la parte posterior del cuello.
+        // El cuello tiene su centro en Z = .01 y radio ~.15 a .19.
+        // Su superficie trasera se mantiene cerca de Z = -.16 a lo largo de su altura.
+        mane.translate(
+            0,
+            .50 + i * .10,          // Sube desde la base del cuello hacia la cabeza
+            -.165 + i * .018        // Se ajusta ligeramente hacia arriba para seguir la convergencia del cuello
+        );
+
+        // Inclinamos la crin exactamente igual que el cuello para que se adhiera a su superficie
+        mane.rotateX(-.11);
+
+        geos.push(mane);
+    }
+
+    // --------------------------------------
+    // Ojo izquierdo (Aplanado en los lados)
+    // --------------------------------------
+    const eyeL = new THREE.SphereGeometry(
+        .030, 16, 12
+    );
+    eyeL.scale(0.50, 1.0, 1.0); // Aplanado lateralmente
+    eyeL.translate(.145, 1.20, .205);
+
+    geos.push(eyeL);
+
+    // --------------------------------------
+    // Ojo derecho (Aplanado en los lados)
+    // --------------------------------------
+    const eyeR = new THREE.SphereGeometry(
+        .030, 16, 12
+    );
+    eyeR.scale(0.50, 1.0, 1.0); // Aplanado lateralmente
+    eyeR.translate(-.145, 1.20, .205);
+
+    geos.push(eyeR);
+
+    const result = mergeGeometries(geos);
+
+    // Más esbelto
+    result.scale(.86, 1, .86);
+
+    return result;
+}
+
+
+// ==========================================
+// ALFIL (BISHOP) - Mitra limpia
+// ==========================================
+function buildBishopGeometry() {
+    const geos = [];
+
+    // --------------------------------------
+    // Cuerpo
+    // --------------------------------------
+    const bodyProfile = [
+        [0, 0],
+        [.27, 0],
+        [.35, .035],
+        [.39, .08],
+        [.37, .13],
+        [.30, .17],
+        [.23, .22],
+        [.19, .29],
+        [.18, .43],
+        [.20, .56],
+        [.17, .68],
+        [.125, .75],
+        [.115, .80],
+        [0, .83]
+    ];
+
+    geos.push(createLathe(bodyProfile));
+
+    // --------------------------------------
+    // Collar
+    // --------------------------------------
+    geos.push(createLathe([
+        [0, .79],
+        [.115, .79],
+        [.16, .82],
+        [.16, .86],
+        [.115, .89],
+        [0, .89]
+    ]));
+
+    // --------------------------------------
+    // Mitra
+    // No hay ninguna geometría flotante.
+    // --------------------------------------
+    const mitreProfile = [
+        [0, .86],
+        [.12, .86],
+        [.16, .91],
+        [.17, .98],
+        [.15, 1.06],
+        [.125, 1.14],
+        [.085, 1.23],
+        [.040, 1.31],
+        [0, 1.37]
+    ];
+
+    geos.push(createLathe(mitreProfile));
+
+    // Remate superior
+    geos.push(
+        new THREE.SphereGeometry(
+            .040, 16, 10
+        ).translate(0, 1.40, 0)
+    );
+
+    const result = mergeGeometries(geos);
+
+    // Más esbelto
+    result.scale(.86, 1, .86);
+
+    return result;
+}
+
+
+// ==========================================
+// PIEZAS DE TORNO
+// ==========================================
+function buildPieceGeometries() {
+
+    const profiles = {
+
+        // ==================================
+        // PEÓN
+        // ==================================
+        p: [
+            [0, 0],
+            [.27, 0],
+            [.35, .035],
+            [.38, .075],
+            [.35, .12],
+            [.28, .16],
+            [.21, .21],
+            [.18, .30],
+            [.18, .48],
+            [.20, .57],
+            [.16, .64],
+            [.12, .68],
+            [0, .69]
+        ],
+
+        // ==================================
+        // TORRE
+        // ==================================
+        r: [
+            [0, 0],
+            [.29, 0],
+            [.38, .035],
+            [.42, .08],
+            [.39, .13],
+            [.32, .18],
+            [.25, .22],
+            [.22, .32],
+            [.22, .62],
+            [.24, .82],
+            [.28, .88],
+            [.30, .93],
+            [.30, 1.00],
+            [0, 1.00]
+        ],
+
+        // ==================================
+        // DAMA
+        // ==================================
+        q: [
+            [0, 0],
+            [.31, 0],
+            [.39, .035],
+            [.43, .08],
+            [.40, .14],
+            [.34, .19],
+            [.26, .24],
+            [.22, .34],
+            [.22, .58],
+            [.24, .72],
+            [.21, .82],
+            [.17, .92],
+            [.20, 1.02],
+            [.25, 1.08],
+            [.27, 1.15],
+            [.23, 1.20],
+            [.17, 1.24],
+            [.11, 1.27],
+            [0, 1.29]
+        ],
+
+        // ==================================
+        // REY
+        // ==================================
+        k: [
+            [0, 0],
+            [.32, 0],
+            [.41, .04],
+            [.44, .09],
+            [.41, .15],
+            [.34, .20],
+            [.26, .25],
+            [.23, .37],
+            [.23, .67],
+            [.26, .82],
+            [.23, .94],
+            [.20, 1.04],
+            [.25, 1.10],
+            [.29, 1.17],
+            [.27, 1.23],
+            [.21, 1.28],
+            [.15, 1.31],
+            [0, 1.33]
+        ]
+    };
+
+
+    // ==========================================
+    // PEÓN
+    // ==========================================
+
+    const pawnGeos = [
+        createLathe(profiles.p)
+    ];
+
+    addCollar(
+        pawnGeos,
+        .67,
+        .12,
+        .025
+    );
+
+    pawnGeos.push(
+        new THREE.SphereGeometry(
+            .14,
+            32,
+            20
+        ).translate(0, .88, 0)
+    );
+
+    pieceGeometries.p =
+        mergeGeometries(pawnGeos);
+
+
+    // ==========================================
+    // TORRE
+    // ==========================================
+
+    const rookGeos = [
+        createLathe(profiles.r)
+    ];
+
+    addCollar(
+        rookGeos,
+        .98,
+        .16,
+        .035
+    );
+
+    // Plataforma superior
+    rookGeos.push(
+        createLathe([
+            [0, 1.00],
+            [.30, 1.00],
+            [.34, 1.04],
+            [.34, 1.10],
+            [0, 1.10]
+        ])
+    );
+
+    // ------------------------------------------
+    // 8 ALMENAS
+    // ------------------------------------------
+    const battlementRadius = .245;
+
+    for (let i = 0; i < 6; i++) {
+
+        const angle =
+            i * Math.PI / 6;
+
+        const block =
+            new THREE.BoxGeometry(
+                .105,
+                .17,
+                .105
+            );
+
+        block.translate(
+            Math.sin(angle) * battlementRadius,
+            1.185,
+            Math.cos(angle) * battlementRadius
+        );
+
+        block.rotateY(angle);
+
+        rookGeos.push(block);
+    }
+
+    pieceGeometries.r =
+        mergeGeometries(rookGeos);
+
+
+    // ==========================================
+    // DAMA
+    // ==========================================
+
+    const queenGeos = [
+        createLathe(profiles.q)
+    ];
+
+    addCollar(
+        queenGeos,
+        1.25,
+        .14,
+        .03
+    );
+
+    // ------------------------------------------
+    // Corona de 8 puntas
+    // ------------------------------------------
+    const crownRadius = .15;
+
+    for (let i = 0; i < 8; i++) {
+
+        const angle =
+            i * Math.PI / 4;
+
+        const point =
+            new THREE.ConeGeometry(
+                .040,
+                .20,
+                12
+            );
+
+        point.translate(
+            Math.sin(angle) * crownRadius,
+            1.38,
+            Math.cos(angle) * crownRadius
+        );
+
+        queenGeos.push(point);
+    }
+
+    // Bola superior
+    queenGeos.push(
+        new THREE.SphereGeometry(
+            .050,
+            16,
+            12
+        ).translate(0, 1.51, 0)
+    );
+
+    pieceGeometries.q =
+        mergeGeometries(queenGeos);
+
+
+    // ==========================================
+    // REY
+    // ==========================================
+
+    const kingGeos = [
+        createLathe(profiles.k)
+    ];
+
+    addCollar(
+        kingGeos,
+        1.31,
+        .15,
+        .03
+    );
+
+    // ------------------------------------------
+    // Corona superior
+    // ------------------------------------------
+    kingGeos.push(
+        createLathe([
+            [0, 1.30],
+            [.16, 1.30],
+            [.19, 1.34],
+            [.17, 1.39],
+            [0, 1.42]
+        ])
+    );
+
+    // ------------------------------------------
+    // Cruz vertical
+    // ------------------------------------------
+    const vert =
+        new THREE.BoxGeometry(
+            .060,
+            .30,
+            .060
+        );
+
+    vert.translate(
+        0,
+        1.56,
+        0
+    );
+
+    kingGeos.push(vert);
+
+    // ------------------------------------------
+    // Cruz horizontal
+    // ------------------------------------------
+    const horz =
+        new THREE.BoxGeometry(
+            .20,
+            .060,
+            .060
+        );
+
+    horz.translate(
+        0,
+        1.61,
+        0
+    );
+
+    kingGeos.push(horz);
+
+    pieceGeometries.k =
+        mergeGeometries(kingGeos);
+
+
+    // ==========================================
+    // CABALLO + ALFIL
+    // ==========================================
+
+    pieceGeometries.n =
+        buildKnightGeometry();
+
+    pieceGeometries.b =
+        buildBishopGeometry();
+
+
+    // ==========================================
+    // ADELGAZAR PIEZAS DE TORNO
+    // ==========================================
+
+    pieceGeometries.p.scale(
+        .86, 1, .86
+    );
+
+    pieceGeometries.r.scale(
+        .86, 1, .86
+    );
+
+    pieceGeometries.q.scale(
+        .86, 1, .86
+    );
+
+    pieceGeometries.k.scale(
+        .86, 1, .86
+    );
+
+
+    // ==========================================
+    // NORMALES
+    // ==========================================
+
+    for (const key in pieceGeometries) {
+        pieceGeometries[key]
+            .computeVertexNormals();
+    }
+}
+
+function initThree(canvas){
+  if(threeInitialized) return true;
+  if(typeof THREE==='undefined')return false;
+  
+  scene=new THREE.Scene();
+  //scene.background=new THREE.Color(0x0a0a12);
+  //=======textura fondo
+  const bgCanvas = document.createElement('canvas');
+  bgCanvas.width = 128;
+  bgCanvas.height = 128;
+
+  const ctx = bgCanvas.getContext('2d');
+
+  const g = ctx.createRadialGradient(64, 45, 5, 64, 64, 100);
+  g.addColorStop(0, '#151512');
+  g.addColorStop(1, '#040002');
+
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+
+  scene.background = new THREE.CanvasTexture(bgCanvas);
+  //=========
+
+  camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,.1,100);
+  camTheta = 0; camPhi = 1.1; camDist = 11;
+
+  renderer=new THREE.WebGLRenderer({
+    canvas,
+    antialias:CFG.antialias,
+    alpha:false,
+    powerPreference: IS_LOW_END ? 'low-power' : 'high-performance'
+  });
+  renderer.setPixelRatio(RES_LEVELS[resLevelIndex].pr);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = CFG.shadows;
+  if(CFG.shadows) renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const hemi = new THREE.HemisphereLight(0xf0e6d2, 0x1a1a2e, 0.3);
+  scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xfff4e0, 1.0);
+  key.position.set(5, 12, 5);
+  if(CFG.shadows){
+    key.castShadow = true;
+    key.shadow.mapSize.set(CFG.shadowSize, CFG.shadowSize);
+    key.shadow.camera.left = -8;
+    key.shadow.camera.right = 8;
+    key.shadow.camera.top = 8;
+    key.shadow.camera.bottom = -8;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 25;
+    key.shadow.bias = -0.001;
+  }
+  scene.add(key);
+
+  //=====textura marmol mesa
+  const marble = new THREE.TextureLoader().load(
+    'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
+        <rect width="128" height="128" fill="#050002"/> <!-- color base -->
+        <path d="M-10 30 Q30 5 65 35 T140 20" fill="none" stroke="#210" stroke-width="5" opacity="0.1"/>
+        <path d="M-20 75 Q25 45 60 80 T145 65" fill="none" stroke="#322" stroke-width="3" opacity="0.1"/>
+        <path d="M10 125 Q45 90 80 115 T140 100" fill="none" stroke="#211" stroke-width="4" opacity="0.1"/>
+      </svg>
+    `)
+  );
+
+  //marble.wrapS = THREE.RepeatWrapping;
+  //marble.wrapT = THREE.RepeatWrapping;
+
+  marble.wrapS = THREE.MirroredRepeatWrapping;
+  marble.wrapT = THREE.MirroredRepeatWrapping;
+
+  marble.repeat.set(5, 5); //repetición manchas
+
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(20, 64),
+    new THREE.MeshStandardMaterial({
+      map: marble,
+      roughness: 0.95
+    })
+  );
+
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.7;
+  //=====
+
+  if(CFG.shadows) floor.receiveShadow = true;
+  scene.add(floor);
+
+  boardGroup = new THREE.Group();
+  buildBoard();
+  scene.add(boardGroup);
+
+  piecesGroup = new THREE.Group();
+  scene.add(piecesGroup);
+
+  indicatorsGroup = new THREE.Group();
+  scene.add(indicatorsGroup);
+
+  whiteMat = new THREE.MeshStandardMaterial({color:0xf5ead0, roughness:0.35, metalness:0.08});
+  blackMat = new THREE.MeshStandardMaterial({color:0x111111, roughness:0.3, metalness:0.35});
+  selectionMat = new THREE.MeshStandardMaterial({color:0xffd84d, emissive:0xffd84d, emissiveIntensity:0.3, roughness:0.3, metalness:0.4});
+
+  buildPieceGeometries();
+  initPiecePool();
+
+  window.addEventListener('resize', onResize);
+  onResize();
+  
+  updateCamera();
+  threeInitialized = true;
+  return true;
+}
+
+function onResize(){
+  if(!renderer)return;
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function buildBoard(){
+  const baseMat = new THREE.MeshStandardMaterial({color:0x2a1810, roughness:0.5, metalness:0.2});
+  const base = new THREE.Mesh(new THREE.BoxGeometry(8.8,.3,8.8), baseMat);
+  base.position.y = -0.35;
+  if(CFG.shadows){base.castShadow=true;base.receiveShadow=true;}
+  boardGroup.add(base);
+
+  const frameMat = new THREE.MeshStandardMaterial({color:0x3d2817, roughness:0.4, metalness:0.3});
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(9.2,.5,9.2), frameMat);
+  frame.position.y = -0.55;
+  if(CFG.shadows){frame.castShadow=true;frame.receiveShadow=true;}
+  boardGroup.add(frame);
+
+  const lightMat = new THREE.MeshStandardMaterial({color:0xeedbb5, roughness:0.6, metalness:0.05});
+  const darkMat = new THREE.MeshStandardMaterial({color:0x6b4a2b, roughness:0.55, metalness:0.1});
+  const sqGeo = new THREE.BoxGeometry(SQ, 0.1, SQ);
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const isLight = (r+c)%2===0;
+      const sq = new THREE.Mesh(sqGeo, isLight ? lightMat : darkMat);
+      const w = coordToWorld(r,c);
+      sq.position.set(w.x, -0.15, w.z);
+      if(CFG.shadows)sq.receiveShadow = true;
+      sq.userData = {type:'square', r, c};
+      boardGroup.add(sq);
+      squareMeshes[r+','+c] = sq;
+    }
+  }
+
+  if(CFG.labels){
+    const canvas2d = document.createElement('canvas');
+    canvas2d.width = 64; canvas2d.height = 64;
+    const ctx = canvas2d.getContext('2d');
+    function makeLabel(text){
+      ctx.clearRect(0,0,64,64);
+      ctx.fillStyle = '#c19a6b';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 32, 32);
+      const tex = new THREE.CanvasTexture(canvas2d);
+      const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+      const s = new THREE.Sprite(mat);
+      s.scale.set(.4,.4,.4);
+      return s;
+    }
+    for(let i=0;i<8;i++){
+      const file = String.fromCharCode(97+i);
+      const rank = String(8-i);
+      const w1 = coordToWorld(0,i);
+      const w2 = coordToWorld(i,0);
+      const s1 = makeLabel(file); s1.position.set(w1.x, -0.5, 4.3); boardGroup.add(s1);
+      const s2 = makeLabel(file); s2.position.set(w1.x, -0.5, -4.3); boardGroup.add(s2);
+      const s3 = makeLabel(rank); s3.position.set(-4.3, -0.5, w2.z); boardGroup.add(s3);
+      const s4 = makeLabel(rank); s4.position.set(4.3, -0.5, w2.z); boardGroup.add(s4);
+    }
+  }
+}
+
+/* =====================================================================
+   PIECES - POOL
+   ===================================================================== */
+const piecesPool = { w: {p:[],r:[],n:[],b:[],q:[],k:[]}, b: {p:[],r:[],n:[],b:[],q:[],k:[]} };
+const activePieces = {};
+
+function initPiecePool(){
+  const counts = {p:8,r:2,n:2,b:2,q:1,k:1};
+  for(const color of ['w','b']){
+    for(const type in counts){
+      for(let i=0;i<counts[type];i++){
+        const mesh = new THREE.Mesh(
+          pieceGeometries[type],
+          color==='w' ? whiteMat : blackMat
+        );
+        mesh.castShadow = CFG.shadows;
+        mesh.visible = false;
+        mesh.userData = {type, color, origMat: mesh.material};
+        piecesGroup.add(mesh);
+        piecesPool[color][type].push(mesh);
+      }
+    }
+  }
+}
+
+function getPiece(type, color){
+  return piecesPool[color][type].pop() || null;
+}
+
+function returnPiece(mesh){
+  mesh.visible = false;
+  mesh.material = mesh.userData.origMat;
+  piecesPool[mesh.userData.color][mesh.userData.type].push(mesh);
+}
+
+function syncPiecesWithGame(game){
+  for(const key in activePieces){
+    returnPiece(activePieces[key]);
+    delete activePieces[key];
+  }
+
+  for(let r = 0; r < 8; r++){
+    for(let c = 0; c < 8; c++){
+      const p = game.board[r][c];
+      if(!p) continue;
+
+      const mesh = getPiece(p.type, p.color);
+      if(!mesh) continue;
+
+      const w = coordToWorld(r, c);
+
+      mesh.position.set(w.x, -0.1, w.z);
+
+      // Orientación del caballo
+      if(p.type === 'n'){
+        // La malla del caballo apunta al revés de lo esperado por defecto,
+        // así que se invierte la base (antes 0/π, ahora π/0) y se le sigue
+        // sumando π cuando el tablero está "flippeado" (vista desde negras),
+        // que es lo que corrigió que antes cambiaran de orientación solos.
+        let rotY = (p.color === 'white' || p.color === 'w') ? Math.PI : 0;
+        if(flipped) rotY += Math.PI;
+        mesh.rotation.y = rotY;
+      }
+
+      mesh.visible = true;
+      mesh.userData.r = r;
+      mesh.userData.c = c;
+
+      activePieces[r + ',' + c] = mesh;
+    }
+  }
+}
+
+function getPieceMeshAt(r,c){ return activePieces[r+','+c] || null; }
+
+/* =====================================================================
+   ANIMACIONES
+   ===================================================================== */
+const animations = [];
+function animateMove(fromR, fromC, toR, toC, onDone){
+  const mesh = getPieceMeshAt(fromR, fromC);
+  if(!mesh){ onDone&&onDone(); return; }
+  const from = coordToWorld(fromR, fromC);
+  const to = coordToWorld(toR, toC);
+  animations.push({
+    mesh, from, to,
+    start: performance.now(),
+    dur: 350,
+    onDone
+  });
+  const capKey = toR+','+toC;
+  if(activePieces[capKey] && activePieces[capKey] !== mesh){
+    returnPiece(activePieces[capKey]);
+    delete activePieces[capKey];
+  }
+}
+function tickAnimations(){
+  if(!animations.length)return;
+  const now = performance.now();
+  for(let i=animations.length-1;i>=0;i--){
+    const a = animations[i];
+    const t = Math.min((now - a.start)/a.dur, 1);
+    const e = t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+    a.mesh.position.x = a.from.x + (a.to.x - a.from.x)*e;
+    a.mesh.position.z = a.from.z + (a.to.z - a.from.z)*e;
+    a.mesh.position.y = -0.1 + Math.sin(t*Math.PI)*0.3;
+    if(t>=1){
+      a.mesh.position.set(a.to.x, -0.1, a.to.z);
+      if(a.onDone) a.onDone();
+      animations.splice(i,1);
+    }
+  }
+}
+
+/* =====================================================================
+   CÁMARA
+   ===================================================================== */
+let camTheta = 0, camPhi = 1.1, camDist = 11;
+const CAM_MIN_PHI = 0.3, CAM_MAX_PHI = 1.45;
+const CAM_MIN_DIST = 6, CAM_MAX_DIST = 20;
+
+function updateCamera(){
+  const x = camDist * Math.cos(camPhi) * Math.sin(camTheta);
+  const y = camDist * Math.sin(camPhi);
+  const z = camDist * Math.cos(camPhi) * Math.cos(camTheta);
+  camera.position.set(x, y, z);
+  camera.lookAt(0,0,0);
+}
+
+function resetCamera(){
+  camTheta = 0;
+  camPhi = 1.1;
+  camDist = 11;
+  if(camera) updateCamera();
+}
+
+/* =====================================================================
+   INTERACCIÓN
+   ===================================================================== */
+const raycaster = new THREE.Raycaster();
+const mouseVec = new THREE.Vector2();
+let selectedSquare = null;
+let legalMoves = [];
+let indicatorMeshes = [];
+let indicatorGeo = null, indicatorMat = null;
+
+function setIndicatorSquares(squares){
+  for(const m of indicatorMeshes) indicatorsGroup.remove(m);
+  indicatorMeshes = [];
+  if(!squares.length)return;
+  if(!indicatorGeo){
+    indicatorGeo = new THREE.CircleGeometry(0.22, 10);
+    indicatorMat = new THREE.MeshBasicMaterial({color:0xffd84d, transparent:true, opacity:0.55});
+  }
+  for(const s of squares){
+    const w = coordToWorld(s.r, s.c);
+    const m = new THREE.Mesh(indicatorGeo, indicatorMat);
+    m.rotation.x = -Math.PI/2;
+    m.position.set(w.x, -0.08, w.z);
+    m.userData = {indicator:true, r:s.r, c:s.c};
+    indicatorsGroup.add(m);
+    indicatorMeshes.push(m);
+  }
+}
+
+function setSelectionHighlight(r, c, on){
+  const mesh = getPieceMeshAt(r,c);
+  if(!mesh) return;
+  if(on){
+    mesh.material = selectionMat;
+    mesh.position.y = 0;
+  } else {
+    mesh.material = mesh.userData.origMat;
+    mesh.position.y = -0.1;
+  }
+}
+
+function handleBoardClick(clientX, clientY){
+  if(!game || !renderer) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouseVec.x = ((clientX - rect.left)/rect.width)*2 - 1;
+  mouseVec.y = -((clientY - rect.top)/rect.height)*2 + 1;
+  raycaster.setFromCamera(mouseVec, camera);
+
+  let hitR=null, hitC=null;
+  const pieces = Object.values(activePieces);
+  if(pieces.length){
+    const hits = raycaster.intersectObjects(pieces, false);
+    if(hits.length){
+      hitR = hits[0].object.userData.r;
+      hitC = hits[0].object.userData.c;
+    }
+  }
+  if(hitR === null){
+    const targets = [...boardGroup.children, ...indicatorMeshes];
+    const hits2 = raycaster.intersectObjects(targets, false);
+    for(const h of hits2){
+      if(h.object.userData.type === 'square'){
+        hitR = h.object.userData.r; hitC = h.object.userData.c; break;
+      } else if(h.object.userData.indicator){
+        hitR = h.object.userData.r; hitC = h.object.userData.c; break;
+      }
+    }
+  }
+  if(hitR === null) return;
+
+  if(selectedSquare){
+    if(hitR===selectedSquare.r && hitC===selectedSquare.c){
+      clearSelection(); audio.resume(); audio.select(); return;
+    }
+    const move = legalMoves.find(m => m.to[0]===hitR && m.to[1]===hitC);
+    if(move){
+      const promos = legalMoves.filter(m => m.to[0]===hitR && m.to[1]===hitC && m.promotion);
+      if(promos.length) promptPromotion(promos);
+      else executeMove(move);
+    } else {
+      const p = game.at(hitR, hitC);
+      if(p && p.color === myColor) selectSquare(hitR, hitC);
+      else { clearSelection(); audio.illegal(); }
+    }
+  } else {
+    const p = game.at(hitR, hitC);
+    if(p && p.color === myColor && myColor === game.turn && isPlayerTurn()){
+      selectSquare(hitR, hitC); audio.resume(); audio.select();
+    }
+  }
+}
+
+function selectSquare(r,c){
+  clearSelection();
+  selectedSquare = {r,c};
+  setSelectionHighlight(r,c,true);
+  legalMoves = game.movesFrom(r,c);
+  setIndicatorSquares(legalMoves.map(m=>({r:m.to[0],c:m.to[1]})));
+}
+function clearSelection(){
+  if(selectedSquare) setSelectionHighlight(selectedSquare.r, selectedSquare.c, false);
+  selectedSquare = null;
+  legalMoves = [];
+  setIndicatorSquares([]);
+}
+
+/* =====================================================================
+   PERSISTENCIA DE SESIÓN MULTIJUGADOR
+   ===================================================================== */
+const SESSION_KEY = 'chess3d_mp_session';
+
+function saveMultiplayerSession(){
+  if(!game || isAI || !myColor) return;
+  const session = {
+    fen: game.toFEN(),
+    history: game.history.map(h => h.san),
+    myColor: myColor,
+    isHost: isHost,
+    roomCode: roomCode,
+    roomSecret: roomSecret,
+    timestamp: Date.now()
+  };
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch(e){ console.error('Error saving session:', e); }
+}
+
+function loadMultiplayerSession(){
+  try {
+    const data = localStorage.getItem(SESSION_KEY);
+    if(!data) return null;
+    const session = JSON.parse(data);
+    // Verificar que no sea muy antigua (más de 24 horas)
+    if(Date.now() - session.timestamp > 24 * 60 * 60 * 1000){
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch(e){ return null; }
+}
+
+function clearMultiplayerSession(){
+  try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+}
+
+function updateSessionOnMove(){
+  if(!isAI && game && myColor){
+    saveMultiplayerSession();
+  } else if(isAI && game){
+    saveAISession();
+  }
+}
+
+/* =====================================================================
+   PERSISTENCIA DE SESIÓN CONTRA LA COMPUTADORA
+   (misma idea que la sesión multijugador, pero local: no hay handshake
+   de red, así que al recargar se restaura directamente sin pedir nada)
+   ===================================================================== */
+const AI_SESSION_KEY = 'chess3d_ai_session';
+
+function saveAISession(){
+  if(!game || !isAI) return;
+  const session = {
+    fen: game.toFEN(),
+    history: game.history.map(h => h.san),
+    myColor: myColor,
+    timestamp: Date.now()
+  };
+  try {
+    localStorage.setItem(AI_SESSION_KEY, JSON.stringify(session));
+  } catch(e){ console.error('Error saving AI session:', e); }
+}
+
+function loadAISession(){
+  try {
+    const data = localStorage.getItem(AI_SESSION_KEY);
+    if(!data) return null;
+    const session = JSON.parse(data);
+    // Verificar que no sea muy antigua (más de 24 horas)
+    if(Date.now() - session.timestamp > 24 * 60 * 60 * 1000){
+      localStorage.removeItem(AI_SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch(e){ return null; }
+}
+
+function clearAISession(){
+  try { localStorage.removeItem(AI_SESSION_KEY); } catch(e){}
+}
+
+/* =====================================================================
+   GAME CONTROLLER
+   ===================================================================== */
+let game = null;
+let myColor = null;
+let isHost = false;
+let opponentColor = null;
+let roomCode = '';
+let isAI = false;
+let aiColor = null;
+let pendingPromotion = null;
+let renderLoopRunning = false;
+
+/* Identidad persistente del dispositivo y secreto de emparejamiento de la sala */
+const DEVICE_ID_KEY = 'chess3d_device_id';
+function genToken(numBytes){
+  const arr = new Uint8Array(numBytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+}
+function getDeviceId(){
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if(!id){ id = genToken(8); localStorage.setItem(DEVICE_ID_KEY, id); }
+  return id;
+}
+const deviceId = getDeviceId();
+let roomSecret = null; // secreto compartido, solo entre los 2 jugadores de la partida
+
+function ensureThreeInitialized(){
+  if(threeInitialized) return true;
+  const canvas = document.getElementById('gameCanvas');
+  if(!HAS_WEBGL || typeof THREE === 'undefined') return false;
+  try {
+    return initThree(canvas);
+  } catch(e) {
+    console.error('Three init failed:', e);
+    return false;
+  }
+}
+
+function startRenderLoop(){
+  if(renderLoopRunning) return;
+  renderLoopRunning = true;
+  let lastFrame = 0;
+  function loop(now){
+    if(!renderLoopRunning) return;
+    requestAnimationFrame(loop);
+    if(now - lastFrame < 16) return;
+    lastFrame = now;
+    tickAnimations();
+    if(renderer && scene && camera) renderer.render(scene, camera);
+  }
+  requestAnimationFrame(loop);
+}
+
+function stopRenderLoop(){
+  renderLoopRunning = false;
+}
+
+function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null){
+  const threeOK = ensureThreeInitialized();
+  
+  game = new ChessGame(fen);
+  myColor = color;
+  isAI = vsAI;
+  aiColor = vsAI ? (color==='w'?'b':'w') : null;
+  flipped = myColor === 'b';
+  clearSelection();
+  
+  // Restaurar historial si es reconexión
+  if(restoreHistory && restoreHistory.length){
+    // Reconstruir historial desde SAN (simplificado)
+    game.history = restoreHistory.map(san => ({san}));
+  }
+  
+  showScreen('game');
+  
+  if(threeOK){
+    syncPiecesWithGame(game);
+    updateCamera();
+    setupInputIfNeeded();
+    startRenderLoop();
+  } else {
+    fb2dGame = game;
+    fb2dMyColor = myColor;
+    showScreen('fallback');
+    renderFallback2D();
+  }
+  
+  updateHUD();
+  renderHistory();
+  
+  // Guardar sesión según el modo de juego
+  if(!vsAI) saveMultiplayerSession();
+  else saveAISession();
+  
+  if(isAI && game.turn === aiColor && threeOK) setTimeout(doAIMove, 500);
+}
+
+let inputSetup = false;
+function setupInputIfNeeded(){
+  if(inputSetup || !renderer) return;
+  inputSetup = true;
+  setupInput(renderer.domElement);
+}
+
+function executeMove(move, broadcast=true){
+  const from = move.from, to = move.to;
+  animateMove(from[0], from[1], to[0], to[1], ()=>{
+    const rec = game.makeMove(move);
+    clearSelection();
+    if(renderer) syncPiecesWithGame(game);
+    updateHUD();
+    renderHistory();
+    playMoveSound(rec);
+    updateSessionOnMove(); // Guardar sesión en cada movimiento
+    const st = game.status();
+    if(st.over){ endGame(st); return; }
+    if(broadcast && partnerPeerId){
+      moveAction.send({type:'move', move:stripMoveExtras(move), fen:game.toFEN()}, {target: partnerPeerId});
+    }
+    if(isAI && game.turn===aiColor) setTimeout(doAIMove, 500);
+  });
+}
+
+function stripMoveExtras(m){
+  return {from:m.from,to:m.to,piece:m.piece,color:m.color,capture:!!m.capture,promotion:m.promotion,castle:m.castle,enPassant:m.enPassant,doublePawn:m.doublePawn};
+}
+
+function playMoveSound(rec){
+  audio.resume();
+  const st = game.status();
+  if(rec.capture) audio.capture();
+  else audio.move();
+  if(st.check) audio.check();
+}
+
+function promptPromotion(promos){
+  pendingPromotion = promos;
+  document.getElementById('promoModal').classList.add('visible');
+  document.querySelectorAll('.promo-piece').forEach(el=>{
+    el.style.color = myColor==='w'?'#f5ead0':'#0d0d0d';
+  });
+}
+
+function endGame(status){
+  clearMultiplayerSession(); // Limpiar sesión al terminar
+  clearAISession();
+  const t = document.getElementById('endTitle');
+  const s = document.getElementById('endSubtitle');
+  t.className = 'modal-title';
+  if(status.result === 'checkmate'){
+    if(status.winner === myColor){
+      t.textContent='¡Victoria!'; t.classList.add('victory'); s.textContent='Jaque mate'; audio.victory();
+    } else {
+      t.textContent='Derrota'; t.classList.add('defeat'); s.textContent='Jaque mate'; audio.defeat();
+    }
+  } else if(status.result === 'stalemate'){
+    t.textContent='Tablas'; t.classList.add('draw'); s.textContent='Ahogado'; audio.draw();
+  } else if(status.result === 'draw50'){
+    t.textContent='Tablas'; t.classList.add('draw'); s.textContent='Regla 50 movimientos'; audio.draw();
+  } else if(status.result === 'draw3fold'){
+    t.textContent='Tablas'; t.classList.add('draw'); s.textContent='Triple repetición'; audio.draw();
+  } else if(status.result === 'insufficient'){
+    t.textContent='Tablas'; t.classList.add('draw'); s.textContent='Material insuficiente'; audio.draw();
+  } else if(status.result === 'resign'){
+    const win = myColor === status.winner;
+    t.textContent = win?'¡Victoria!':'Derrota';
+    t.classList.add(win?'victory':'defeat');
+    s.textContent = 'Abandono';
+    if(win) audio.victory(); else audio.defeat();
+  }
+  document.getElementById('endModal').classList.add('visible');
+}
+
+/* =====================================================================
+   IA
+   ===================================================================== */
+const PV = {p:100,n:320,b:330,r:500,q:900,k:20000};
+function evaluate(g){
+  let s=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=g.board[r][c];
+    if(!p)continue;
+    s += p.color==='w'?PV[p.type]:-PV[p.type];
+  }
+  return s;
+}
+function minimax(g, depth, alpha, beta, maximizing){
+  if(depth===0)return evaluate(g);
+  const moves=g.legalMoves();
+  if(!moves.length){
+    if(g.inCheck(g.turn))return maximizing?-100000-depth:100000+depth;
+    return 0;
+  }
+  moves.sort((a,b)=>(b.capture?1:0)-(a.capture?1:0));
+  if(maximizing){
+    let best=-Infinity;
+    for(const m of moves){
+      const s=g._applyMoveFast(m);
+      const val=minimax(g,depth-1,alpha,beta,false);
+      g._undoFast(s);
+      if(val>best)best=val;
+      if(best>alpha)alpha=best;
+      if(beta<=alpha)break;
+    }
+    return best;
+  } else {
+    let best=Infinity;
+    for(const m of moves){
+      const s=g._applyMoveFast(m);
+      const val=minimax(g,depth-1,alpha,beta,true);
+      g._undoFast(s);
+      if(val<best)best=val;
+      if(best<beta)beta=best;
+      if(beta<=alpha)break;
+    }
+    return best;
+  }
+}
+function doAIMove(){
+  if(!game||!isAI||game.turn!==aiColor)return;
+  const st=game.status();
+  if(st.over){endGame(st);return;}
+  const moves=game.legalMoves();
+  if(!moves.length)return;
+  let bestMove=null, bestVal=aiColor==='w'?-Infinity:Infinity;
+  for(const m of moves){
+    const s=game._applyMoveFast(m);
+    const val=minimax(game,1,-Infinity,Infinity,aiColor==='b');
+    game._undoFast(s);
+    if(aiColor==='w'){if(val>bestVal){bestVal=val;bestMove=m;}}
+    else{if(val<bestVal){bestVal=val;bestMove=m;}}
+  }
+  if(bestMove){
+    if(bestMove.promotion && bestMove.promotion!=='q'){
+      const qm = moves.find(x=>x.from[0]===bestMove.from[0]&&x.from[1]===bestMove.from[1]&&x.to[0]===bestMove.to[0]&&x.to[1]===bestMove.to[1]&&x.promotion==='q');
+      if(qm) bestMove = qm;
+    }
+    executeMove(bestMove);
+  }
+}
+
+function isPlayerTurn(){
+  return myColor && game.turn === myColor;
+}
+
+/* =====================================================================
+   WEBRTC P2P
+   ===================================================================== */
+let trysteroRoom = null;
+let moveAction = null;
+let seatAction = null;
+let partnerPeerId = null;   // peerId ACTUAL de mi compañero de partida (cambia si recarga)
+let seatGiven = false;      // (solo host) ¿ya confirmé un asiento de negras a alguien?
+let connectionTimeout = null;
+let isReconnecting = false;  // true mientras se reconecta a una partida ya en curso
+const tentativeSecrets = Object.create(null); // peerId -> secreto negociado en el handshake, aún sin confirmar
+
+function showRoomView(viewId){
+  const views = ['hostView','connectingView','connectedView','errorView'];
+  views.forEach(v => {
+    document.getElementById(v).style.display = v === viewId ? 'block' : 'none';
+  });
+}
+
+function cleanupPeer(){
+  if(connectionTimeout) clearTimeout(connectionTimeout);
+  if(trysteroRoom){
+    try{ trysteroRoom.leave(); }catch(e){}
+    trysteroRoom = null;
+  }
+  moveAction = null;
+  seatAction = null;
+  partnerPeerId = null;
+  seatGiven = false;
+  for(const k in tentativeSecrets) delete tentativeSecrets[k];
+}
+
+// Une al dispositivo a la sala de señalización de Trystero (solo el nombre de sala
+// es público; el emparejamiento de los 2 primeros y la reconexión se resuelven aquí).
+function connectToRoom(){
+  cleanupPeer();
+
+  trysteroRoom = joinRoom(
+    {appId: TRYSTERO_APP_ID},
+    roomCode,
+    {
+      // Se ejecuta para CADA peer que intenta conectar, antes de aceptarlo.
+      // Si ya tenemos un roomSecret propio (pareja ya establecida), exigimos que
+      // el que llega lo conozca; si no coincide, se rechaza la conexión.
+      onPeerHandshake: async (peerId, send, receive) => {
+        await send({secret: roomSecret || null});
+        const {data} = await receive();
+        const theirSecret = (data && data.secret) || null;
+
+        if(roomSecret){
+          if(theirSecret !== roomSecret) throw new Error('room-locked: secreto no coincide');
+          tentativeSecrets[peerId] = roomSecret;
+        } else if(theirSecret){
+          tentativeSecrets[peerId] = theirSecret;
+        } else {
+          // Primer encuentro de ambos en esta sala: se pacta un secreto común
+          tentativeSecrets[peerId] = [selfId, peerId].sort().join(':');
+        }
+      }
+    }
+  );
+
+  moveAction = trysteroRoom.makeAction('move');
+  seatAction = trysteroRoom.makeAction('seat');
+
+  moveAction.onMessage = (msg, {peerId}) => {
+    if(peerId === partnerPeerId) handlePeerMessage(msg);
+  };
+  seatAction.onMessage = (msg, {peerId}) => handleSeatMessage(msg, peerId);
+
+  trysteroRoom.onPeerJoin = peerId => onTrysteroPeerJoin(peerId);
+  trysteroRoom.onPeerLeave = peerId => onTrysteroPeerLeave(peerId);
+
+  startConnectionTimeout(60);
+}
+
+function onTrysteroPeerJoin(peerId){
+  if(isHost){
+    if(!partnerPeerId){
+      // Asiento de negras libre (primera vez, o mi compañero se había ido): lo confirmo.
+      partnerPeerId = peerId;
+      seatGiven = true;
+      roomSecret = tentativeSecrets[peerId];
+      saveMultiplayerSession();
+      seatAction.send({color:'b', roomSecret}, {target: peerId});
+      onConnectionEstablished();
+    }
+    // Si ya hay alguien sentado y llega otro peer, no le confirmamos asiento:
+    // queda sin rol asignado (no recibe la partida ni puede mover).
+  } else {
+    // Invitado: el primer (y único) peer que veamos es el anfitrión.
+    if(!partnerPeerId){
+      partnerPeerId = peerId;
+    }
+  }
+  updateConnectionStatus();
+}
+
+function onTrysteroPeerLeave(peerId){
+  if(peerId === partnerPeerId){
+    partnerPeerId = null;
+    if(isHost) seatGiven = false; // el asiento queda "reservado" a la espera de su reconexión
+    updateConnectionStatus();
+    if(game && !isAI) showToast('Tu oponente se desconectó. Esperando que regrese...', true);
+  }
+}
+
+function handleSeatMessage(msg, peerId){
+  if(isHost) return; // solo el invitado recibe asignación de asiento
+  myColor = 'b';
+  opponentColor = 'w';
+  roomSecret = msg.roomSecret;
+  partnerPeerId = peerId;
+  onConnectionEstablished();
+}
+
+function onConnectionEstablished(){
+  if(connectionTimeout) clearTimeout(connectionTimeout);
+  if(isReconnecting){
+    // Ya había una partida en curso: no tiene sentido pedir "Empezar partida"
+    // de nuevo, se continúa directamente donde había quedado.
+    isReconnecting = false;
+    audio.resume();
+    audio.select();
+    resumeGame();
+    return;
+  }
+  showRoomView('connectedView');
+  document.getElementById('colorAssignMsg').textContent =
+    myColor === 'w' ? 'Juegas con las Blancas' : 'Juegas con las Negras';
+  updateConnectionStatus();
+  audio.resume();
+  audio.select();
+}
+
+function startConnectionTimeout(seconds = 30){
+  if(connectionTimeout) clearTimeout(connectionTimeout);
+  connectionTimeout = setTimeout(()=>{
+    if(partnerPeerId) return;
+    showRoomView('errorView');
+    document.getElementById('errorMsg').textContent =
+      'Tiempo de espera agotado. Verifica el código de sala e inténtalo de nuevo.';
+  }, seconds * 1000);
+}
+
+function handlePeerMessage(msg){
+  try{
+    if(msg.type === 'move'){
+      const move = msg.move;
+      const legal = game.legalMoves();
+      const match = legal.find(m =>
+        m.from[0]===move.from[0]&&m.from[1]===move.from[1]&&
+        m.to[0]===move.to[0]&&m.to[1]===move.to[1]&&
+        m.promotion===move.promotion
+      );
+      if(match) executeMove(match, false);
+      else if(msg.fen){
+        game.loadFEN(msg.fen);
+        if(renderer) syncPiecesWithGame(game);
+        updateHUD(); renderHistory();
+        showToast('Sincronizado');
+      }
+    } else if(msg.type === 'resign'){
+      endGame({result:'resign', winner:myColor});
+    } else if(msg.type === 'sync_request'){
+      // Enviar estado completo para reconexión
+      if(partnerPeerId) moveAction.send({
+        type:'sync_response',
+        fen: game.toFEN(),
+        history: game.history.map(h => h.san)
+      }, {target: partnerPeerId});
+    } else if(msg.type === 'sync_response'){
+      // Restaurar estado del oponente
+      game.loadFEN(msg.fen);
+      if(msg.history) game.history = msg.history.map(san => ({san}));
+      if(renderer) syncPiecesWithGame(game);
+      updateHUD(); renderHistory();
+      saveMultiplayerSession();
+      showToast('Estado sincronizado');
+    }
+  }catch(e){console.error('Peer message error:', e);}
+}
+
+// Un color está "en línea" si soy yo (local, siempre conectado), si el rival
+// es la computadora (siempre conectada), o si el peer P2P está presente.
+function isColorOnline(color){
+  if(myColor === color) return true;
+  if(isAI) return true;
+  return !!partnerPeerId;
+}
+function updateConnectionDots(){
+  const wDot = document.getElementById('whiteConnDot');
+  const bDot = document.getElementById('blackConnDot');
+  if(wDot) wDot.className = 'connection-dot' + (isColorOnline('w') ? '' : ' offline');
+  if(bDot) bDot.className = 'connection-dot' + (isColorOnline('b') ? '' : ' offline');
+}
+function updateConnectionStatus(){
+  updateConnectionDots();
+}
+
+/* =====================================================================
+   HUD / UI
+   ===================================================================== */
+function updateHUD(){
+  if(!game)return;
+  const ws=document.getElementById('whiteStatus');
+  const bs=document.getElementById('blackStatus');
+  if(myColor===null){
+    ws.textContent='Rival 1'; bs.textContent='Rival 2';
+    ws.className='status-tag spectator'; bs.className='status-tag spectator';
+  } else {
+    ws.textContent = myColor==='w'?'Tú':(isAI?'IA':'Rival');
+    bs.textContent = myColor==='b'?'Tú':(isAI?'IA':'Rival');
+    ws.className = 'status-tag'+(game.turn==='w'?' turn':' waiting');
+    bs.className = 'status-tag'+(game.turn==='b'?' turn':' waiting');
+  }
+  updateConnectionDots();
+  const st = game.status();
+  let info = 'En juego';
+  if(st.check) info = '¡Jaque!';
+  if(st.over) info = 'Partida terminada';
+  document.getElementById('gameStateInfo').textContent = info;
+}
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  if(!list||!game)return;
+  list.innerHTML = '';
+  const hist = game.history;
+  for(let i=0;i<hist.length;i+=2){
+    const n = Math.floor(i/2)+1;
+    const w = hist[i]?.san||'';
+    const b = hist[i+1]?.san||'';
+    const div = document.createElement('div');
+    div.className='history-move';
+    div.textContent = `${n}. ${w} ${b}`;
+    list.appendChild(div);
+  }
+  list.scrollTop = list.scrollHeight;
+}
+function showToast(msg, isError=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast visible' + (isError ? ' error' : '');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>t.classList.remove('visible'), 3000);
+}
+
+/* =====================================================================
+   SCREENS
+   ===================================================================== */
+function showScreen(name){
+  document.getElementById('homeScreen').classList.toggle('hidden', name!=='home');
+  document.getElementById('roomScreen').classList.toggle('hidden', name!=='room');
+  document.getElementById('gameScreen').classList.toggle('active', name==='game');
+  document.getElementById('fallback2D').classList.toggle('hidden', name!=='fallback');
+  if(name !== 'game') stopRenderLoop();
+}
+function generateRoomCode(){
+  // 8 caracteres de un alfabeto sin ambigüedades (sin 0/o/1/l/i) para que sea
+  // fácil de compartir de palabra y a la vez tenga espacio de nombres suficiente
+  // en la red pública de señalización (evita colisiones con salas de otras personas).
+  const chars='abcdefghjkmnpqrstuvwxyz23456789';
+  let s='';
+  for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+/* =====================================================================
+   FALLBACK 2D
+   ===================================================================== */
+let fb2dGame = null, fb2dSelected = null, fb2dMyColor = 'w';
+function renderFallback2D(){
+  if(!fb2dGame) return;
+  const board = document.getElementById('fallbackBoard');
+  board.innerHTML = '';
+  board.classList.add('visible');
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const rr = fb2dMyColor==='b'?7-r:r;
+    const cc = fb2dMyColor==='b'?7-c:c;
+    const cell = document.createElement('div');
+    cell.className = 'fallback-cell '+((rr+cc)%2===0?'light':'dark');
+    cell.dataset.r = rr; cell.dataset.c = cc;
+    const p = fb2dGame.board[rr][cc];
+    if(p){
+      const sym = {k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+      cell.textContent = sym[p.type];
+      cell.classList.add(p.color==='w'?'fallback-piece-w':'fallback-piece-b');
+    }
+    if(fb2dSelected && fb2dSelected.r===rr && fb2dSelected.c===cc) cell.classList.add('selected');
+    const moves = fb2dSelected ? fb2dGame.movesFrom(fb2dSelected.r, fb2dSelected.c) : [];
+    if(moves.some(m=>m.to[0]===rr&&m.to[1]===cc)) cell.classList.add('legal');
+    cell.onclick = () => fb2dClick(rr, cc);
+    board.appendChild(cell);
+  }
+  document.getElementById('fallbackInfo').textContent =
+    `Turno: ${fb2dGame.turn==='w'?'Blancas':'Negras'}`+(fb2dGame.inCheck(fb2dGame.turn)?' - ¡Jaque!':'');
+}
+function fb2dClick(r,c){
+  if(!fb2dGame)return;
+  audio.resume();
+  if(fb2dSelected){
+    if(fb2dSelected.r===r&&fb2dSelected.c===c){fb2dSelected=null;renderFallback2D();return;}
+    const moves = fb2dGame.movesFrom(fb2dSelected.r, fb2dSelected.c);
+    const m = moves.find(x=>x.to[0]===r&&x.to[1]===c);
+    if(m){
+      const q = m.promotion ? moves.find(x=>x.to[0]===r&&x.to[1]===c&&x.promotion==='q') : m;
+      fb2dGame.makeMove(q);
+      m.capture?audio.capture():audio.move();
+      fb2dSelected = null;
+      const st = fb2dGame.status();
+      if(st.over) alert('Partida terminada: '+st.result);
+      if(partnerPeerId){
+        moveAction.send({type:'move', move:stripMoveExtras(q), fen:fb2dGame.toFEN()}, {target: partnerPeerId});
+      }
+    } else {
+      const p = fb2dGame.at(r,c);
+      if(p&&p.color===fb2dMyColor&&fb2dGame.turn===fb2dMyColor){fb2dSelected={r,c};audio.select();}
+      else fb2dSelected=null;
+    }
+  } else {
+    const p = fb2dGame.at(r,c);
+    if(p&&p.color===fb2dMyColor&&fb2dGame.turn===fb2dMyColor){fb2dSelected={r,c};audio.select();}
+  }
+  renderFallback2D();
+}
+
+/* =====================================================================
+   INPUT
+   ===================================================================== */
+function setupInput(canvas){
+  let down = false, startX=0, startY=0, startTheta=0, startPhi=0, moved=false;
+  let pinchDist=0, pinchStart=0;
+  function start(x,y){down=true;startX=x;startY=y;startTheta=camTheta;startPhi=camPhi;moved=false;}
+  function move(x,y){
+    if(!down)return;
+    const dx=x-startX, dy=y-startY;
+    if(Math.abs(dx)+Math.abs(dy)>5)moved=true;
+    if(moved){
+      camTheta = startTheta - dx*0.005;
+      camPhi = Math.max(CAM_MIN_PHI, Math.min(CAM_MAX_PHI, startPhi - dy*0.005));
+      updateCamera();
+    }
+  }
+  function end(x,y){if(!down)return;down=false;if(!moved)handleBoardClick(x,y);}
+  canvas.addEventListener('mousedown',e=>{e.preventDefault();start(e.clientX,e.clientY);});
+  window.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup',e=>end(e.clientX,e.clientY));
+  canvas.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){e.preventDefault();start(e.touches[0].clientX,e.touches[0].clientY);}
+    else if(e.touches.length===2){
+      pinchDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      pinchStart = camDist;
+    }
+  },{passive:false});
+  canvas.addEventListener('touchmove',e=>{
+    if(e.touches.length===1){e.preventDefault();move(e.touches[0].clientX,e.touches[0].clientY);}
+    else if(e.touches.length===2){
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, pinchStart*pinchDist/d));
+      updateCamera();
+    }
+  },{passive:false});
+  canvas.addEventListener('touchend',e=>{
+    if(e.changedTouches.length===1&&e.touches.length===0)end(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
+  });
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, camDist + e.deltaY*0.01));
+    updateCamera();
+  },{passive:false});
+}
+
+/* =====================================================================
+   EVENTOS UI
+   ===================================================================== */
+document.addEventListener('click', () => audio.resume(), {once:true});
+document.addEventListener('touchstart', () => audio.resume(), {once:true});
+
+// Advertencia antes de recargar si hay partida multijugador activa
+window.addEventListener('beforeunload', (e) => {
+  if(game && !isAI && myColor && partnerPeerId){
+    e.preventDefault();
+    e.returnValue = 'Hay una partida multijugador en curso. Si recargas, necesitarás reconectar con tu oponente.';
+    return e.returnValue;
+  }
+});
+
+// ===== CREAR SALA (HOST) =====
+document.getElementById('btnCreateRoom').onclick = async () => {
+  try {
+    isHost = true;
+    myColor = 'w';
+    opponentColor = 'b';
+    roomCode = generateRoomCode();
+    roomSecret = null;
+    isReconnecting = false;
+
+    showScreen('room');
+    document.getElementById('roomSubtitle').textContent = 'Sala creada';
+    document.getElementById('roomCodeDisplay').textContent = roomCode;
+    showRoomView('hostView');
+
+    connectToRoom();
+    updateURL(roomCode);
+  } catch(e){
+    console.error('Error creating room:', e);
+    showRoomView('errorView');
+    document.getElementById('errorMsg').textContent = 'Error al crear la sala: ' + e.message;
+  }
+};
+
+document.getElementById('btnCopyOffer').onclick = async () => {
+  if(!roomCode){ showToast('No hay código para copiar', true); return; }
+  try{
+    await navigator.clipboard.writeText(roomCode);
+    showToast('✓ Código copiado. Envíalo a tu oponente.');
+  }catch(e){
+    showToast('Copia manualmente: ' + roomCode, true);
+  }
+};
+
+// ===== UNIRSE A SALA (INVITADO) =====
+document.getElementById('btnShowJoin').onclick = async () => {
+  document.getElementById('mainPanel').style.display = 'none';
+  document.getElementById('joinPanel').style.display = 'flex';
+  const input = document.getElementById('inputRoomCode');
+  input.value = '';
+  const fromURL = getRoomFromURL();
+  if(fromURL){
+    input.value = fromURL;
+    return;
+  }
+  // Si no vino un código por URL, intentamos pegarlo automáticamente desde
+  // el portapapeles (mejor esfuerzo, en silencio: muchos navegadores piden
+  // permiso o simplemente lo bloquean acá). El botón "📋 Pegar código" de
+  // abajo es la vía confiable, con gesto explícito del usuario.
+  try{
+    if(navigator.clipboard && navigator.clipboard.readText){
+      const text = (await navigator.clipboard.readText() || '').trim().toLowerCase();
+      if(/^[abcdefghjkmnpqrstuvwxyz23456789]{4,10}$/.test(text)){
+        input.value = text;
+      }
+    }
+  }catch(e){
+    // Permiso denegado o API no disponible: se ignora, para eso está el botón de pegar.
+  }
+};
+
+document.getElementById('btnPasteCode').onclick = async () => {
+  const input = document.getElementById('inputRoomCode');
+  try{
+    if(!navigator.clipboard || !navigator.clipboard.readText){
+      showToast('Tu navegador no permite leer el portapapeles', true);
+      return;
+    }
+    const text = (await navigator.clipboard.readText() || '').trim().toLowerCase();
+    if(!text){
+      showToast('El portapapeles está vacío', true);
+      return;
+    }
+    input.value = text;
+    input.focus();
+  }catch(e){
+    showToast('No se pudo leer el portapapeles. Pégalo manualmente.', true);
+  }
+};
+
+document.getElementById('btnBackHome').onclick = () => {
+  document.getElementById('mainPanel').style.display = 'flex';
+  document.getElementById('joinPanel').style.display = 'none';
+};
+
+document.getElementById('btnJoinRoom').onclick = async () => {
+  const code = document.getElementById('inputRoomCode').value.trim().toLowerCase();
+
+  if(!code){
+    showToast('Escribe el código de sala', true);
+    return;
+  }
+
+  try{
+    await joinWithCode(code);
+  }catch(e){
+    console.error('Join error:', e);
+    showToast('Error: ' + e.message, true);
+  }
+};
+
+async function joinWithCode(code){
+  isHost = false;
+  myColor = null;       // se asigna al recibir la confirmación de asiento del anfitrión
+  opponentColor = null;
+  roomCode = code;      // el código ingresado ES el nombre de la sala Trystero
+  roomSecret = null;
+  isReconnecting = false;
+
+  showScreen('room');
+  document.getElementById('roomSubtitle').textContent = 'Uniéndose a la sala...';
+  showRoomView('connectingView');
+  document.getElementById('connectingMsg').textContent = 'Conectando a la sala "' + code + '"...';
+
+  try{
+    connectToRoom();
+    updateURL(roomCode);
+  }catch(e){
+    console.error('Error joining room:', e);
+    showRoomView('errorView');
+    document.getElementById('errorMsg').textContent = 'Error al unirse a la sala: ' + e.message;
+  }
+}
+
+function resumeGame(){
+  // Si hay sesión guardada, restaurarla
+  const session = loadMultiplayerSession();
+  if(session && session.myColor === myColor){
+    startGameFromFEN(session.fen, myColor, false, session.history);
+    // Solicitar sincronización al oponente
+    if(partnerPeerId){
+      moveAction.send({type:'sync_request'}, {target: partnerPeerId});
+    }
+  } else {
+    startGameFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', myColor, false);
+  }
+}
+
+document.getElementById('btnStartGame').onclick = () => {
+  if(connectionTimeout) clearTimeout(connectionTimeout);
+  resumeGame();
+};
+
+document.getElementById('btnRetry').onclick = () => {
+  isReconnecting = false;
+  cleanupPeer();
+  showScreen('home');
+  document.getElementById('mainPanel').style.display = 'flex';
+  document.getElementById('joinPanel').style.display = 'none';
+};
+
+document.getElementById('btnLeaveRoom').onclick = () => {
+  isReconnecting = false;
+  cleanupPeer();
+  showScreen('home');
+  document.getElementById('mainPanel').style.display = 'flex';
+  document.getElementById('joinPanel').style.display = 'none';
+};
+
+// ===== RECONEXIÓN =====
+// Con Trystero, reconectar es simplemente re-unirse a la misma sala (mismo nombre)
+// presentando el mismo roomSecret guardado: el handshake de la sala reconoce
+// automáticamente a las dos partes originales y rechaza a cualquier otro.
+document.getElementById('btnReconnect').onclick = () => {
+  const session = loadMultiplayerSession();
+  if(!session){
+    showToast('No hay sesión guardada', true);
+    return;
+  }
+
+  isReconnecting = true;
+
+  // Restaurar identidad de la sesión guardada
+  myColor = session.myColor;
+  isHost = session.isHost;
+  roomCode = session.roomCode;
+  roomSecret = session.roomSecret;
+  opponentColor = myColor === 'w' ? 'b' : 'w';
+
+  showScreen('room');
+  document.getElementById('roomSubtitle').textContent = 'Reconectando partida...';
+  if(isHost){
+    document.getElementById('roomCodeDisplay').textContent = roomCode;
+    showRoomView('hostView');
+  } else {
+    showRoomView('connectingView');
+    document.getElementById('connectingMsg').textContent = 'Reconectando a la sala "' + roomCode + '"...';
+  }
+
+  connectToRoom();
+};
+
+document.getElementById('btnDiscardSession').onclick = () => {
+  clearMultiplayerSession();
+  document.getElementById('reconnectBanner').style.display = 'none';
+  document.getElementById('mainPanel').style.display = 'flex';
+  showToast('Sesión descartada');
+};
+
+// ===== JUEGO =====
+document.getElementById('btnPlayAI').onclick = () => {
+  roomCode = 'local-'+Date.now();
+  myColor = Math.random()<0.5?'w':'b';
+  startGameFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', myColor, true);
+};
+
+document.getElementById('btnExitRoom').onclick = () => {
+  document.getElementById('endModal').classList.remove('visible');
+  isReconnecting = false;
+  cleanupPeer();
+  clearMultiplayerSession();
+  clearAISession();
+  showScreen('home');
+};
+
+document.getElementById('btnNewGame').onclick = () => {
+  document.getElementById('endModal').classList.remove('visible');
+  startGameFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', myColor, isAI);
+};
+
+document.getElementById('btnResetCamera').onclick = resetCamera;
+document.getElementById('btnFlipBoard').onclick = () => {
+  flipped = !flipped;
+  if(game && renderer) syncPiecesWithGame(game);
+};
+document.getElementById('btnToggleHistory').onclick = () => {
+  document.getElementById('historyPanel').classList.toggle('visible');
+};
+document.getElementById('btnResign').onclick = () => {
+  if(!game)return;
+  if(!confirm('¿Seguro que quieres rendirte?'))return;
+  if(partnerPeerId) moveAction.send({type:'resign'}, {target: partnerPeerId});
+  endGame({result:'resign', winner:opponentColor||(myColor==='w'?'b':'w')});
+};
+document.querySelectorAll('.promo-piece').forEach(el=>{
+  el.onclick = () => {
+    const p = el.dataset.piece;
+    document.getElementById('promoModal').classList.remove('visible');
+    const promo = pendingPromotion.find(m => m.promotion === p);
+    pendingPromotion = null;
+    if(promo) executeMove(promo);
+  };
+});
+
+/* =====================================================================
+   URL
+   ===================================================================== */
+function getRoomFromURL(){
+  const h = location.hash.replace('#','');
+  if(h) return h;
+  return new URLSearchParams(location.search).get('room') || '';
+}
+function updateURL(code){history.replaceState(null,'',location.pathname+'#'+code);}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+function init(){
+  audio.init();
+  // En pantallas anchas (escritorio) el panel de movimientos arranca visible;
+  // en pantallas angostas arranca oculto. En ambos casos el botón 📜 lo alterna.
+  if(window.innerWidth >= 900){
+    document.getElementById('historyPanel').classList.add('visible');
+  }
+  const badge = document.getElementById('qualityBadge');
+  if(badge){
+    badge.textContent = RES_LEVELS[resLevelIndex].label.toUpperCase();
+    badge.title = 'Toca para cambiar la calidad de renderizado';
+    badge.addEventListener('click', () => setResolutionLevel(resLevelIndex + 1));
+  }
+  if(!HAS_WEBGL) document.getElementById('noWebglMsg').style.display = 'block';
+  
+  // Verificar si hay sesión multijugador activa
+  const session = loadMultiplayerSession();
+  if(session){
+    document.getElementById('reconnectBanner').style.display = 'block';
+    document.getElementById('mainPanel').style.display = 'none';
+    return;
+  }
+
+  // Verificar si había una partida contra la computadora en curso: al ser
+  // local (sin red de por medio) se restaura directo, tal cual estaba.
+  const aiSession = loadAISession();
+  if(aiSession){
+    roomCode = 'local-'+Date.now();
+    startGameFromFEN(aiSession.fen, aiSession.myColor, true, aiSession.history);
+  }
+}
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
