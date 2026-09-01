@@ -52,6 +52,10 @@ textarea:focus{outline:none;border-color:#a87f4f}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 .bottom-bar{position:absolute;bottom:0;left:0;right:0;padding:12px;display:flex;gap:8px;z-index:5;pointer-events:none}
 .bottom-bar .btn{pointer-events:auto;flex:1;min-height:48px;font-size:26px;line-height:1;padding:10px 8px}
+.bottom-bar .btn-mic{flex:0 0 auto;width:48px;height:48px;min-height:48px;padding:0;border-radius:50%;box-sizing:border-box;background:#1a1a26;color:#fff;border:3px solid #000;transition:background-color 0.15s,color 0.15s;-webkit-user-select:none;user-select:none;touch-action:none}
+.bottom-bar .btn-mic svg{width:20px;height:20px;pointer-events:none}
+.bottom-bar .btn-mic.active{background:#22d3ee;color:#0a0a12}
+.bottom-bar .btn-mic.hidden{display:none}
 .history{position:absolute;right:12px;top:80px;bottom:80px;width:180px;background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;overflow-y:auto;z-index:5;display:none}
 .history.visible{display:block}
 .history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
@@ -185,7 +189,14 @@ textarea:focus{outline:none;border-color:#a87f4f}
     <button class="btn btn-secondary" id="btnFlipBoard">↕</button>
     <button class="btn btn-secondary" id="btnToggleHistory">📜</button>
     <button class="btn btn-danger" id="btnResign">⚐</button>
+    <button class="btn btn-mic" id="btnMic" type="button" aria-label="Micrófono" title="Toca para activar/desactivar. Mantén presionado para hablar mientras dure la presión.">
+      <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+        <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V20H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A7 7 0 0 0 19 11z"/>
+      </svg>
+    </button>
   </div>
+  <audio id="remoteVoiceAudio" autoplay style="display:none"></audio>
   <div id="toast" class="toast"></div>
 </div>
 
@@ -1956,6 +1967,9 @@ function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null){
   
   updateHUD();
   renderHistory();
+  updateMicButtonVisibility();
+  resetVoiceSendState();
+  resetVoiceReceiveState();
   
   // Guardar sesión según el modo de juego
   if(!vsAI) saveMultiplayerSession();
@@ -2124,6 +2138,154 @@ let connectionTimeout = null;
 let isReconnecting = false;  // true mientras se reconecta a una partida ya en curso
 const tentativeSecrets = Object.create(null); // peerId -> secreto negociado en el handshake, aún sin confirmar
 
+/* =====================================================================
+   VOZ EN TIEMPO REAL (WebRTC vía Trystero)
+   ===================================================================== */
+let micStream = null;         // MediaStream local del micrófono (se pide 1 sola vez)
+let micTrack = null;          // pista de audio local (se habilita/deshabilita para transmitir)
+let micStreamAttachedTo = null; // peerId al que ya se le añadió el stream local
+let micTransmitting = false;  // ¿se está transmitiendo audio ahora mismo?
+let micPressTimer = null;
+let micPressIsHold = false;
+const MIC_HOLD_THRESHOLD = 350; // ms para considerar "presión prolongada"
+
+let voiceCtx = null;          // AudioContext para analizar el volumen entrante
+let peerAnalyser = null;
+let receivingRAF = null;
+let colorCycleInterval = null;
+let isReceivingVoice = false;
+let receiveColorIdx = 0;
+const RECEIVE_COLORS = ['#22c55e','#ef4444','#eab308','#3b82f6']; // verde/rojo/amarillo/azul
+
+function getMicBtn(){ return document.getElementById('btnMic'); }
+
+function updateMicButtonVisibility(){
+  const btn = getMicBtn();
+  if(!btn) return;
+  btn.classList.toggle('hidden', isAI); // no tiene sentido enviar voz jugando contra la IA
+}
+
+async function ensureMicStream(){
+  if(micStream) return micStream;
+  micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  micTrack = micStream.getAudioTracks()[0];
+  micTrack.enabled = false; // por defecto no se manda audio
+  return micStream;
+}
+
+function attachMicStreamIfNeeded(){
+  if(trysteroRoom && micStream && partnerPeerId && micStreamAttachedTo !== partnerPeerId){
+    try{
+      trysteroRoom.addStream(micStream, {target: partnerPeerId});
+      micStreamAttachedTo = partnerPeerId;
+    }catch(e){ console.warn('No se pudo adjuntar el stream de voz', e); }
+  }
+}
+
+function updateMicButtonUI(){
+  const btn = getMicBtn();
+  if(!btn) return;
+  btn.classList.toggle('active', micTransmitting);
+}
+
+async function startMicTransmit(){
+  if(!partnerPeerId){
+    showToast('No hay oponente conectado', true);
+    return;
+  }
+  try{
+    await ensureMicStream();
+  }catch(e){
+    showToast('No se pudo acceder al micrófono', true);
+    return;
+  }
+  attachMicStreamIfNeeded();
+  if(micTrack) micTrack.enabled = true;
+  micTransmitting = true;
+  updateMicButtonUI();
+}
+
+function stopMicTransmit(){
+  if(micTrack) micTrack.enabled = false;
+  micTransmitting = false;
+  updateMicButtonUI();
+}
+
+function resetVoiceSendState(){
+  clearTimeout(micPressTimer);
+  micPressTimer = null;
+  micPressIsHold = false;
+  micTransmitting = false;
+  updateMicButtonUI();
+  if(micStream){
+    micStream.getTracks().forEach(t => t.stop());
+  }
+  micStream = null;
+  micTrack = null;
+  micStreamAttachedTo = null;
+}
+
+function setupPeerStreamAnalysis(stream){
+  try{
+    if(!voiceCtx) voiceCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const source = voiceCtx.createMediaStreamSource(stream);
+    peerAnalyser = voiceCtx.createAnalyser();
+    peerAnalyser.fftSize = 512;
+    peerAnalyser.smoothingTimeConstant = 0.6;
+    source.connect(peerAnalyser);
+    monitorPeerVolume();
+  }catch(e){ console.warn('No se pudo analizar el audio entrante', e); }
+}
+
+function monitorPeerVolume(){
+  if(!peerAnalyser) return;
+  const data = new Uint8Array(peerAnalyser.frequencyBinCount);
+  const tick = () => {
+    if(!peerAnalyser) return; // se canceló (peer se fue, etc.)
+    peerAnalyser.getByteFrequencyData(data);
+    let sum = 0;
+    for(let i=0;i<data.length;i++) sum += data[i];
+    const avg = sum / data.length;
+    const receiving = avg > 8; // umbral de silencio
+    if(receiving !== isReceivingVoice){
+      isReceivingVoice = receiving;
+      updateMicReceiveIndicator();
+    }
+    receivingRAF = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function updateMicReceiveIndicator(){
+  const btn = getMicBtn();
+  if(!btn) return;
+  if(isReceivingVoice){
+    if(!colorCycleInterval){
+      receiveColorIdx = 0;
+      btn.style.borderColor = RECEIVE_COLORS[receiveColorIdx];
+      colorCycleInterval = setInterval(() => {
+        receiveColorIdx = (receiveColorIdx + 1) % RECEIVE_COLORS.length;
+        btn.style.borderColor = RECEIVE_COLORS[receiveColorIdx];
+      }, 450);
+    }
+  } else {
+    if(colorCycleInterval){ clearInterval(colorCycleInterval); colorCycleInterval = null; }
+    btn.style.borderColor = '#000';
+  }
+}
+
+function resetVoiceReceiveState(){
+  if(receivingRAF) cancelAnimationFrame(receivingRAF);
+  receivingRAF = null;
+  if(colorCycleInterval){ clearInterval(colorCycleInterval); colorCycleInterval = null; }
+  peerAnalyser = null;
+  isReceivingVoice = false;
+  const btn = getMicBtn();
+  if(btn) btn.style.borderColor = '#000';
+  const audioEl = document.getElementById('remoteVoiceAudio');
+  if(audioEl) audioEl.srcObject = null;
+}
+
 function showRoomView(viewId){
   const views = ['hostView','connectingView','connectedView','errorView'];
   views.forEach(v => {
@@ -2142,6 +2304,8 @@ function cleanupPeer(){
   partnerPeerId = null;
   seatGiven = false;
   for(const k in tentativeSecrets) delete tentativeSecrets[k];
+  resetVoiceSendState();
+  resetVoiceReceiveState();
 }
 
 // Une al dispositivo a la sala de señalización de Trystero (solo el nombre de sala
@@ -2184,6 +2348,15 @@ function connectToRoom(){
 
   trysteroRoom.onPeerJoin = peerId => onTrysteroPeerJoin(peerId);
   trysteroRoom.onPeerLeave = peerId => onTrysteroPeerLeave(peerId);
+  trysteroRoom.onPeerStream = (stream, peerId) => {
+    if(peerId !== partnerPeerId) return;
+    const audioEl = document.getElementById('remoteVoiceAudio');
+    if(audioEl){
+      audioEl.srcObject = stream;
+      audioEl.play().catch(()=>{});
+    }
+    setupPeerStreamAnalysis(stream);
+  };
 
   startConnectionTimeout(60);
 }
@@ -2215,6 +2388,9 @@ function onTrysteroPeerLeave(peerId){
     partnerPeerId = null;
     if(isHost) seatGiven = false; // el asiento queda "reservado" a la espera de su reconexión
     updateConnectionStatus();
+    stopMicTransmit();
+    micStreamAttachedTo = null; // habrá que re-adjuntar el stream cuando vuelva a conectar
+    resetVoiceReceiveState();
     if(game && !isAI) showToast('Tu oponente se desconectó. Esperando que regrese...', true);
   }
 }
@@ -2237,6 +2413,7 @@ function onConnectionEstablished(){
     audio.resume();
     audio.select();
     resumeGame();
+    attachMicStreamIfNeeded();
     return;
   }
   showRoomView('connectedView');
@@ -2245,6 +2422,7 @@ function onConnectionEstablished(){
   updateConnectionStatus();
   audio.resume();
   audio.select();
+  attachMicStreamIfNeeded();
 }
 
 function startConnectionTimeout(seconds = 30){
@@ -2734,6 +2912,51 @@ document.getElementById('btnResign').onclick = () => {
   if(partnerPeerId) moveAction.send({type:'resign'}, {target: partnerPeerId});
   endGame({result:'resign', winner:opponentColor||(myColor==='w'?'b':'w')});
 };
+
+// ===== BOTÓN DE MICRÓFONO (toque = alternar on/off, presión prolongada = "pulsar para hablar") =====
+(() => {
+  const micBtn = document.getElementById('btnMic');
+  if(!micBtn) return;
+
+  const onPressStart = (e) => {
+    e.preventDefault();
+    try{ micBtn.setPointerCapture(e.pointerId); }catch(err){}
+    micPressIsHold = false;
+    clearTimeout(micPressTimer);
+    micPressTimer = setTimeout(() => {
+      micPressIsHold = true;
+      if(!micTransmitting) startMicTransmit();
+    }, MIC_HOLD_THRESHOLD);
+  };
+
+  const onPressEnd = (e) => {
+    e.preventDefault();
+    clearTimeout(micPressTimer);
+    if(micPressIsHold){
+      // Fue una presión prolongada: al soltar, se deja de transmitir.
+      stopMicTransmit();
+      micPressIsHold = false;
+    } else {
+      // Fue un toque corto: alterna el estado persistente.
+      if(micTransmitting) stopMicTransmit();
+      else startMicTransmit();
+    }
+  };
+
+  const onPressCancel = () => {
+    clearTimeout(micPressTimer);
+    if(micPressIsHold){
+      stopMicTransmit();
+      micPressIsHold = false;
+    }
+  };
+
+  micBtn.addEventListener('pointerdown', onPressStart);
+  micBtn.addEventListener('pointerup', onPressEnd);
+  micBtn.addEventListener('pointercancel', onPressCancel);
+  micBtn.addEventListener('pointerleave', onPressCancel);
+  micBtn.addEventListener('contextmenu', e => e.preventDefault());
+})();
 document.querySelectorAll('.promo-piece').forEach(el=>{
   el.onclick = () => {
     const p = el.dataset.piece;
