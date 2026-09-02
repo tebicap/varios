@@ -240,7 +240,7 @@ const IS_LOW_END = IS_MOBILE && (navigator.hardwareConcurrency <= 4);
 const QUALITY = IS_LOW_END ? 'low' : (IS_MOBILE ? 'medium' : 'high');
 const CFG = {
   low:    { pr: 1,   shadowSize: 256, latheSeg: 10, shadows: false, labels: false, antialias: false },
-  medium: { pr: 1.2, shadowSize: 384, latheSeg: 13, shadows: true,  labels: false, antialias: true },
+  medium: { pr: 1.6, shadowSize: 314, latheSeg: 14, shadows: true,  labels: false, antialias: true },
   high:   { pr: Math.min(window.devicePixelRatio, 2), shadowSize: 384, latheSeg: 16, shadows: true,  labels: true,  antialias: true }
 }[QUALITY];
 
