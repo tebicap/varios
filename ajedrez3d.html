@@ -71,7 +71,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .promo-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);z-index:90;align-items:center;justify-content:center}
 .promo-modal.visible{display:flex}
 .promo-box{background:#1a1a26;border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:16px;display:flex;gap:12px}
-.promo-piece{width:60px;height:60px;background:#262633;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid transparent}
+.promo-piece{width:60px;height:60px;background:#737381;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid transparent}
 .promo-piece:active{background:#3a2f1f;border-color:#a87f4f}
 .toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#0f0f17;border:1px solid rgba(255,255,255,0.1);padding:12px 20px;border-radius:12px;font-size:14px;z-index:200;opacity:0;transition:opacity 0.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.visible{opacity:1}
@@ -2020,7 +2020,7 @@ function promptPromotion(promos){
   pendingPromotion = promos;
   document.getElementById('promoModal').classList.add('visible');
   document.querySelectorAll('.promo-piece').forEach(el=>{
-    el.style.color = myColor==='w'?'#f5ead0':'#0d0d0d';
+    el.style.color = myColor==='w'?'#ffffff':'#000000';
   });
 }
 
