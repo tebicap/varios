@@ -1694,6 +1694,13 @@ let selectedSquare = null;
 let legalMoves = [];
 let indicatorMeshes = [];
 let indicatorGeo = null, indicatorMat = null;
+// Se activa mientras una jugada está animándose (ver animateMove/executeMove).
+// Mientras está en true, se ignoran los clics/toques: el estado lógico
+// (game.board, activePieces, selectedSquare, legalMoves) todavía no refleja
+// la jugada en curso hasta que termina la animación, así que procesar un
+// toque en ese momento puede resolver contra datos viejos (una ficha que ya
+// no está donde el usuario la ve, o movimientos legales de la jugada anterior).
+let boardLocked = false;
 
 function setIndicatorSquares(squares){
   for(const m of indicatorMeshes) indicatorsGroup.remove(m);
@@ -1729,6 +1736,7 @@ function setSelectionHighlight(r, c, on){
 
 function handleBoardClick(clientX, clientY){
   if(!game || !renderer) return;
+  if(boardLocked) return; // hay una jugada animándose: el estado aún no está sincronizado
   const rect = renderer.domElement.getBoundingClientRect();
   mouseVec.x = ((clientX - rect.left)/rect.width)*2 - 1;
   mouseVec.y = -((clientY - rect.top)/rect.height)*2 + 1;
@@ -2004,10 +2012,12 @@ function setupInputIfNeeded(){
 
 function executeMove(move, broadcast=true){
   const from = move.from, to = move.to;
+  boardLocked = true;
   animateMove(from[0], from[1], to[0], to[1], ()=>{
     const rec = game.makeMove(move);
     clearSelection();
     if(renderer) syncPiecesWithGame(game);
+    boardLocked = false; // recién ahora el estado lógico y visual están consistentes
     updateHUD();
     renderHistory();
     playMoveSound(rec);
