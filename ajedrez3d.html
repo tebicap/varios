@@ -1701,7 +1701,7 @@ function setIndicatorSquares(squares){
   if(!squares.length)return;
   if(!indicatorGeo){
     indicatorGeo = new THREE.CircleGeometry(0.22, 10);
-    indicatorMat = new THREE.MeshBasicMaterial({color:0xffd84d, transparent:true, opacity:0.55});
+    indicatorMat = new THREE.MeshBasicMaterial({color:0xffd84d, transparent:true, opacity:0.55, depthTest:false});
   }
   for(const s of squares){
     const w = coordToWorld(s.r, s.c);
@@ -1709,6 +1709,7 @@ function setIndicatorSquares(squares){
     m.rotation.x = -Math.PI/2;
     m.position.set(w.x, -0.08, w.z);
     m.userData = {indicator:true, r:s.r, c:s.c};
+    m.renderOrder = 999;
     indicatorsGroup.add(m);
     indicatorMeshes.push(m);
   }
@@ -1734,21 +1735,37 @@ function handleBoardClick(clientX, clientY){
   raycaster.setFromCamera(mouseVec, camera);
 
   let hitR=null, hitC=null;
-  const pieces = Object.values(activePieces);
-  if(pieces.length){
-    const hits = raycaster.intersectObjects(pieces, false);
-    if(hits.length){
-      hitR = hits[0].object.userData.r;
-      hitC = hits[0].object.userData.c;
+
+  // PRIORIDAD 1: si hay una pieza seleccionada, los círculos amarillos de
+  // movimiento legal ganan siempre, aunque una pieza (de cualquier casilla)
+  // se proyecte por encima en la vista en perspectiva. El indicador es la
+  // superficie de acción que el jugador ve e intenta tocar; no debe perder
+  // contra una pieza que simplemente "tapa" ese punto en pantalla.
+  if(selectedSquare && indicatorMeshes.length){
+    const hitsInd = raycaster.intersectObjects(indicatorMeshes, false);
+    if(hitsInd.length){
+      hitR = hitsInd[0].object.userData.r;
+      hitC = hitsInd[0].object.userData.c;
     }
   }
+
+  // PRIORIDAD 2: piezas (para seleccionar una ficha o capturarla).
   if(hitR === null){
-    const targets = [...boardGroup.children, ...indicatorMeshes];
-    const hits2 = raycaster.intersectObjects(targets, false);
+    const pieces = Object.values(activePieces);
+    if(pieces.length){
+      const hits = raycaster.intersectObjects(pieces, false);
+      if(hits.length){
+        hitR = hits[0].object.userData.r;
+        hitC = hits[0].object.userData.c;
+      }
+    }
+  }
+
+  // PRIORIDAD 3: casillas vacías del tablero (para deseleccionar, etc).
+  if(hitR === null){
+    const hits2 = raycaster.intersectObjects(boardGroup.children, false);
     for(const h of hits2){
       if(h.object.userData.type === 'square'){
-        hitR = h.object.userData.r; hitC = h.object.userData.c; break;
-      } else if(h.object.userData.indicator){
         hitR = h.object.userData.r; hitC = h.object.userData.c; break;
       }
     }
@@ -2654,8 +2671,11 @@ function setupInput(canvas){
     }
   },{passive:false});
   canvas.addEventListener('touchend',e=>{
-    if(e.changedTouches.length===1&&e.touches.length===0)end(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
-  });
+    if(e.changedTouches.length===1&&e.touches.length===0){
+      e.preventDefault();
+      end(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
+    }
+  },{passive:false});
   canvas.addEventListener('wheel',e=>{
     e.preventDefault();
     camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, camDist + e.deltaY*0.01));
