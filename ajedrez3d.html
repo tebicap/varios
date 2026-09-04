@@ -60,9 +60,9 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .history.visible{display:block}
 .history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
-.modal{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .modal.visible{display:flex}
-.modal-box{background:#1a1a26;border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center}
+.modal-box{background:rgb(26 26 38 / 55%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center}
 .modal-title{font-size:32px;font-weight:800;margin-bottom:8px}
 .modal-title.victory{color:#fbbf24}
 .modal-title.defeat{color:#ef4444}
@@ -213,8 +213,8 @@ textarea:focus{outline:none;border-color:#a87f4f}
   <div class="modal-box">
     <div class="modal-title" id="endTitle">—</div>
     <div class="modal-subtitle" id="endSubtitle">—</div>
-    <button class="btn btn-primary" id="btnNewGame" style="margin-bottom:8px">Nueva partida</button>
-    <button class="btn btn-secondary" id="btnExitRoom">Salir de la sala</button>
+    <button class="btn btn-primary" id="btnNewGame" style="margin-bottom:8px; pointer-events: all !important">Nueva partida</button>
+    <button class="btn btn-secondary" id="btnExitRoom" style="pointer-events: all !important">Salir de la sala</button>
   </div>
 </div>
 
@@ -1490,6 +1490,8 @@ function onResize(){
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+let labelSprites = []; // {sprite, kind:'file'|'rank', i, side} para poder reposicionar si cambia 'flipped'
+
 function buildBoard(){
   const baseMat = new THREE.MeshStandardMaterial({color:0x2a1810, roughness:0.5, metalness:0.2});
   const base = new THREE.Mesh(new THREE.BoxGeometry(8.8,.3,8.8), baseMat);
@@ -1545,6 +1547,41 @@ function buildBoard(){
       const s2 = makeLabel(file); s2.position.set(w1.x, -0.5, -4.3); boardGroup.add(s2);
       const s3 = makeLabel(rank); s3.position.set(-4.3, -0.5, w2.z); boardGroup.add(s3);
       const s4 = makeLabel(rank); s4.position.set(4.3, -0.5, w2.z); boardGroup.add(s4);
+      labelSprites.push(
+        {sprite:s1, i, z:4.3},
+        {sprite:s2, i, z:-4.3},
+        {sprite:s3, i, x:-4.3},
+        {sprite:s4, i, x:4.3}
+      );
+    }
+  }
+}
+
+// Recalcula la posición de las casillas y las etiquetas a partir del valor
+// ACTUAL de `flipped`. Las casillas y etiquetas se construyen una sola vez
+// (buildBoard corre una única vez por carga de página), así que si `flipped`
+// cambia después de construidas (al conocer el color asignado, o al usar el
+// botón de voltear tablero) hay que llamar a esta función para que el
+// tablero visual (casillas + etiquetas) quede consistente con las piezas y
+// los indicadores, que sí se reposicionan en cada síncronización/selección
+// usando el `flipped` vigente. Si no se hace, casillas/etiquetas quedan
+// "congeladas" en la orientación anterior mientras piezas e indicadores
+// pasan a la nueva, produciendo un tablero que visualmente parece reflejado
+// 180° (arriba-derecha <-> abajo-izquierda) entre el fondo y las piezas.
+function repositionBoardVisuals(){
+  for(const key in squareMeshes){
+    const sq = squareMeshes[key];
+    const {r, c} = sq.userData;
+    const w = coordToWorld(r, c);
+    sq.position.set(w.x, -0.15, w.z);
+  }
+  for(const {sprite, i, x, z} of labelSprites){
+    if(x !== undefined){
+      const w = coordToWorld(i, 0);
+      sprite.position.set(x, -0.5, w.z);
+    } else {
+      const w = coordToWorld(0, i);
+      sprite.position.set(w.x, -0.5, z);
     }
   }
 }
@@ -1555,27 +1592,43 @@ function buildBoard(){
 const piecesPool = { w: {p:[],r:[],n:[],b:[],q:[],k:[]}, b: {p:[],r:[],n:[],b:[],q:[],k:[]} };
 const activePieces = {};
 
+function createPieceMesh(type, color){
+  const mesh = new THREE.Mesh(
+    pieceGeometries[type],
+    color==='w' ? whiteMat : blackMat
+  );
+  mesh.castShadow = CFG.shadows;
+  mesh.visible = false;
+  mesh.userData = {type, color, origMat: mesh.material};
+  piecesGroup.add(mesh);
+  return mesh;
+}
+
 function initPiecePool(){
   const counts = {p:8,r:2,n:2,b:2,q:1,k:1};
   for(const color of ['w','b']){
     for(const type in counts){
       for(let i=0;i<counts[type];i++){
-        const mesh = new THREE.Mesh(
-          pieceGeometries[type],
-          color==='w' ? whiteMat : blackMat
-        );
-        mesh.castShadow = CFG.shadows;
-        mesh.visible = false;
-        mesh.userData = {type, color, origMat: mesh.material};
-        piecesGroup.add(mesh);
-        piecesPool[color][type].push(mesh);
+        piecesPool[color][type].push(createPieceMesh(type, color));
       }
     }
   }
 }
 
+// El pool arranca con las cantidades iniciales de una partida estándar
+// (1 reina, 2 torres, etc). Pero una promoción de peón puede hacer que
+// en el tablero lógico (game.board) haya, por ejemplo, DOS reinas al
+// mismo tiempo (la original + la recién promocionada). Si acá se
+// devolviera null al agotarse el pool, syncPiecesWithGame simplemente
+// se saltaba esa pieza (ver `if(!mesh) continue;`): no se dibujaba y
+// tampoco quedaba en `activePieces` (no era seleccionable), dando la
+// falsa sensación de que la reina existente se "movía" al casillero
+// del peón recién promocionado. Por eso, si el pool está vacío, se crea
+// una malla nueva en el momento en vez de perder la pieza.
 function getPiece(type, color){
-  return piecesPool[color][type].pop() || null;
+  let mesh = piecesPool[color][type].pop();
+  if(!mesh) mesh = createPieceMesh(type, color);
+  return mesh;
 }
 
 function returnPiece(mesh){
@@ -1968,6 +2021,7 @@ function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null){
   isAI = vsAI;
   aiColor = vsAI ? (color==='w'?'b':'w') : null;
   flipped = myColor === 'b';
+  repositionBoardVisuals();
   clearSelection();
   
   // Restaurar historial si es reconexión
@@ -2054,6 +2108,7 @@ function promptPromotion(promos){
 function endGame(status){
   clearMultiplayerSession(); // Limpiar sesión al terminar
   clearAISession();
+  document.getElementById("btnResign").disabled = true; //deshabilito botón de "Rendirse"
   const t = document.getElementById('endTitle');
   const s = document.getElementById('endSubtitle');
   t.className = 'modal-title';
@@ -2931,6 +2986,8 @@ document.getElementById('btnNewGame').onclick = () => {
 document.getElementById('btnResetCamera').onclick = resetCamera;
 document.getElementById('btnFlipBoard').onclick = () => {
   flipped = !flipped;
+  clearSelection();
+  repositionBoardVisuals();
   if(game && renderer) syncPiecesWithGame(game);
 };
 document.getElementById('btnToggleHistory').onclick = () => {
