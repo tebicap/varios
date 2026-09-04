@@ -218,6 +218,18 @@ textarea:focus{outline:none;border-color:#a87f4f}
   </div>
 </div>
 
+<div id="aiDifficultyModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-title" style="font-size:26px">Elige la dificultad</div>
+    <div class="modal-subtitle">¿Cuánto quieres que razone el ordenador?</div>
+    <button class="btn btn-secondary difficulty-option" data-level="0" style="margin-bottom:8px;pointer-events:all !important">🟢 Fácil</button>
+    <button class="btn btn-secondary difficulty-option" data-level="1" style="margin-bottom:8px;pointer-events:all !important">🔵 Normal</button>
+    <button class="btn btn-secondary difficulty-option" data-level="2" style="margin-bottom:8px;pointer-events:all !important">🟠 Medio</button>
+    <button class="btn btn-secondary difficulty-option" data-level="3" style="margin-bottom:8px;pointer-events:all !important">🔴 Difícil</button>
+    <button class="btn btn-secondary" id="btnCancelDifficulty" style="pointer-events:all !important">Cancelar</button>
+  </div>
+</div>
+
 <div id="fallback2D" class="screen hidden">
   <div class="logo" style="font-size:32px">Modo 2D</div>
   <div class="fallback-board" id="fallbackBoard"></div>
@@ -1929,6 +1941,7 @@ function saveAISession(){
     fen: game.toFEN(),
     history: game.history.map(h => h.san),
     myColor: myColor,
+    difficulty: aiDifficulty,
     timestamp: Date.now()
   };
   try {
@@ -1964,6 +1977,7 @@ let opponentColor = null;
 let roomCode = '';
 let isAI = false;
 let aiColor = null;
+let aiDifficulty = 0; // 0 Fácil, 1 Normal, 2 Medio, 3 Difícil
 let pendingPromotion = null;
 let renderLoopRunning = false;
 
@@ -2140,7 +2154,72 @@ function endGame(status){
    IA
    ===================================================================== */
 const PV = {p:100,n:320,b:330,r:500,q:900,k:20000};
-function evaluate(g){
+
+/* ---- Tablas de posición por casilla (PST), listadas fila0=rank8...fila7=rank1,
+   pensadas para piezas BLANCAS. Para negras se reflejan verticalmente. ---- */
+const PST = {
+  p:[  0,  0,  0,  0,  0,  0,  0,  0,
+      50, 50, 50, 50, 50, 50, 50, 50,
+      10, 10, 20, 30, 30, 20, 10, 10,
+       5,  5, 10, 25, 25, 10,  5,  5,
+       0,  0,  0, 20, 20,  0,  0,  0,
+       5, -5,-10,  0,  0,-10, -5,  5,
+       5, 10, 10,-20,-20, 10, 10,  5,
+       0,  0,  0,  0,  0,  0,  0,  0],
+  n:[-50,-40,-30,-30,-30,-30,-40,-50,
+     -40,-20,  0,  0,  0,  0,-20,-40,
+     -30,  0, 10, 15, 15, 10,  0,-30,
+     -30,  5, 15, 20, 20, 15,  5,-30,
+     -30,  0, 15, 20, 20, 15,  0,-30,
+     -30,  5, 10, 15, 15, 10,  5,-30,
+     -40,-20,  0,  5,  5,  0,-20,-40,
+     -50,-40,-30,-30,-30,-30,-40,-50],
+  b:[-20,-10,-10,-10,-10,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5, 10, 10,  5,  0,-10,
+     -10,  5,  5, 10, 10,  5,  5,-10,
+     -10,  0, 10, 10, 10, 10,  0,-10,
+     -10, 10, 10, 10, 10, 10, 10,-10,
+     -10,  5,  0,  0,  0,  0,  5,-10,
+     -20,-10,-10,-10,-10,-10,-10,-20],
+  r:[  0,  0,  0,  0,  0,  0,  0,  0,
+       5, 10, 10, 10, 10, 10, 10,  5,
+      -5,  0,  0,  0,  0,  0,  0, -5,
+      -5,  0,  0,  0,  0,  0,  0, -5,
+      -5,  0,  0,  0,  0,  0,  0, -5,
+      -5,  0,  0,  0,  0,  0,  0, -5,
+      -5,  0,  0,  0,  0,  0,  0, -5,
+       0,  0,  0,  5,  5,  0,  0,  0],
+  q:[-20,-10,-10, -5, -5,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5,  5,  5,  5,  0,-10,
+      -5,  0,  5,  5,  5,  5,  0, -5,
+       0,  0,  5,  5,  5,  5,  0, -5,
+     -10,  5,  5,  5,  5,  5,  0,-10,
+     -10,  0,  5,  0,  0,  0,  0,-10,
+     -20,-10,-10, -5, -5,-10,-10,-20]
+};
+const KING_MG=[-30,-40,-40,-50,-50,-40,-40,-30,
+               -30,-40,-40,-50,-50,-40,-40,-30,
+               -30,-40,-40,-50,-50,-40,-40,-30,
+               -30,-40,-40,-50,-50,-40,-40,-30,
+               -20,-30,-30,-40,-40,-30,-30,-20,
+               -10,-20,-20,-20,-20,-20,-20,-10,
+                20, 20,  0,  0,  0,  0, 20, 20,
+                20, 30, 10,  0,  0, 10, 30, 20];
+const KING_EG=[-50,-40,-30,-20,-20,-30,-40,-50,
+               -30,-20,-10,  0,  0,-10,-20,-30,
+               -30,-10, 20, 30, 30, 20,-10,-30,
+               -30,-10, 30, 40, 40, 30,-10,-30,
+               -30,-10, 30, 40, 40, 30,-10,-30,
+               -30,-10, 20, 30, 30, 20,-10,-30,
+               -30,-30,  0,  0,  0,  0,-30,-30,
+               -50,-30,-30,-30,-30,-30,-30,-50];
+const PHASE_WEIGHTS={p:0,n:1,b:1,r:2,q:4,k:0};
+const TOTAL_PHASE=24; // 4 caballos + 4 alfiles + 4 torres*2 + 2 damas*4
+
+/* Evaluación simple (solo material) — usada por el nivel 0 Fácil, igual que antes */
+function evaluateMaterial(g){
   let s=0;
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=g.board[r][c];
@@ -2149,52 +2228,245 @@ function evaluate(g){
   }
   return s;
 }
-function minimax(g, depth, alpha, beta, maximizing){
-  if(depth===0)return evaluate(g);
+
+/* Fase de partida: 0=apertura, TOTAL_PHASE=final, para atenuar la tabla del rey */
+function gamePhase(g){
+  let phase=TOTAL_PHASE;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=g.board[r][c];
+    if(p)phase-=(PHASE_WEIGHTS[p.type]||0);
+  }
+  return Math.max(0,Math.min(TOTAL_PHASE,phase));
+}
+
+/* Evaluación avanzada: material + posición (PST), con tabla de rey atenuada
+   entre medio juego y final según la fase de la partida */
+function evaluateAdvanced(g){
+  let s=0;
+  const phase=gamePhase(g);
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=g.board[r][c];
+    if(!p)continue;
+    const rr = p.color==='w' ? r : 7-r;
+    const idx = rr*8+c;
+    let positional;
+    if(p.type==='k') positional=(KING_MG[idx]*(TOTAL_PHASE-phase)+KING_EG[idx]*phase)/TOTAL_PHASE;
+    else positional=PST[p.type][idx];
+    const val=PV[p.type]+positional;
+    s += p.color==='w'?val:-val;
+  }
+  return s;
+}
+
+/* ---- Utilidades de orden de movimientos (MVV-LVA + killer moves + mejor de la
+   tabla de transposición) para que la poda alfa-beta corte antes ---- */
+function mvvLva(g,m){
+  const victim=g.board[m.to[0]][m.to[1]];
+  const attacker=g.board[m.from[0]][m.from[1]];
+  const vVal=victim?PV[victim.type]:0;
+  const aVal=attacker?PV[attacker.type]:0;
+  return vVal*10-aVal;
+}
+function sameMove(a,b){
+  return a&&b&&a.from[0]===b.from[0]&&a.from[1]===b.from[1]&&a.to[0]===b.to[0]&&a.to[1]===b.to[1]&&a.promotion===b.promotion;
+}
+function moveOrderScore(g,m,ttMove,killers){
+  if(ttMove&&sameMove(m,ttMove))return 1000000;
+  if(m.capture)return 100000+mvvLva(g,m);
+  if(killers){
+    if(killers[0]&&sameMove(m,killers[0]))return 90000;
+    if(killers[1]&&sameMove(m,killers[1]))return 89000;
+  }
+  return 0;
+}
+function orderMoves(g,moves,ttMove,killers){
+  moves.sort((a,b)=>moveOrderScore(g,b,ttMove,killers)-moveOrderScore(g,a,ttMove,killers));
+}
+function hasNonPawnMaterial(g,color){
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=g.board[r][c];
+    if(p&&p.color===color&&p.type!=='p'&&p.type!=='k')return true;
+  }
+  return false;
+}
+/* Clave de posición liviana para la tabla de transposición (no incluye enroque
+   ni al-paso: suficiente para este motor simplificado, no para uso oficial) */
+function positionKey(g){
+  let s='';
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=g.board[r][c];
+    s += p?(p.color+p.type):'--';
+  }
+  return s+g.turn;
+}
+
+class SearchTimeUp extends Error {}
+
+/* Búsqueda de quietud: solo continúa explorando capturas para evitar el
+   "efecto horizonte" (p.ej. no ver la recaptura inmediata de una pieza) */
+function quiescence(g, alpha, beta, maximizing, ctx){
+  ctx.nodes++;
+  if(ctx.deadline && (ctx.nodes&1023)===0 && performance.now()>ctx.deadline) throw new SearchTimeUp();
+  const standPat=ctx.evalFn(g);
+  if(maximizing){
+    if(standPat>=beta)return beta;
+    if(standPat>alpha)alpha=standPat;
+  } else {
+    if(standPat<=alpha)return alpha;
+    if(standPat<beta)beta=standPat;
+  }
+  const moves=g.legalMoves().filter(m=>m.capture);
+  moves.sort((a,b)=>mvvLva(g,b)-mvvLva(g,a));
+  for(const m of moves){
+    const s=g._applyMoveFast(m);
+    let val;
+    try{ val=quiescence(g,alpha,beta,!maximizing,ctx); }
+    finally{ g._undoFast(s); }
+    if(maximizing){ if(val>alpha)alpha=val; } else { if(val<beta)beta=val; }
+    if(beta<=alpha)break;
+  }
+  return maximizing?alpha:beta;
+}
+
+/* Minimax + poda alfa-beta, con extensiones opcionales según el nivel de
+   dificultad: quiescence, tabla de transposición y poda de movimiento nulo */
+function alphaBetaSearch(g, depth, alpha, beta, maximizing, ctx, ply){
+  if(ctx.deadline && (++ctx.nodes&1023)===0 && performance.now()>ctx.deadline) throw new SearchTimeUp();
+
+  let ttEntry=null, key=null;
+  if(ctx.useTT){
+    key=positionKey(g);
+    ttEntry=ctx.tt.get(key);
+    if(ttEntry&&ttEntry.depth>=depth){
+      if(ttEntry.flag==='exact')return ttEntry.value;
+      if(ttEntry.flag==='lower'&&ttEntry.value>alpha)alpha=ttEntry.value;
+      else if(ttEntry.flag==='upper'&&ttEntry.value<beta)beta=ttEntry.value;
+      if(alpha>=beta)return ttEntry.value;
+    }
+  }
+
+  if(depth<=0){
+    return ctx.useQuiescence ? quiescence(g,alpha,beta,maximizing,ctx) : ctx.evalFn(g);
+  }
+
   const moves=g.legalMoves();
   if(!moves.length){
     if(g.inCheck(g.turn))return maximizing?-100000-depth:100000+depth;
     return 0;
   }
-  moves.sort((a,b)=>(b.capture?1:0)-(a.capture?1:0));
-  if(maximizing){
-    let best=-Infinity;
-    for(const m of moves){
-      const s=g._applyMoveFast(m);
-      const val=minimax(g,depth-1,alpha,beta,false);
-      g._undoFast(s);
-      if(val>best)best=val;
-      if(best>alpha)alpha=best;
-      if(beta<=alpha)break;
-    }
-    return best;
-  } else {
-    let best=Infinity;
-    for(const m of moves){
-      const s=g._applyMoveFast(m);
-      const val=minimax(g,depth-1,alpha,beta,true);
-      g._undoFast(s);
-      if(val<best)best=val;
-      if(best<beta)beta=best;
-      if(beta<=alpha)break;
-    }
-    return best;
+
+  if(ctx.useNullMove && depth>=3 && !g.inCheck(g.turn) && hasNonPawnMaterial(g,g.turn)){
+    const savedTurn=g.turn;
+    g.turn = savedTurn==='w'?'b':'w';
+    const R=2;
+    let val;
+    try{ val=alphaBetaSearch(g,depth-1-R,alpha,beta,!maximizing,ctx,ply+1); }
+    finally{ g.turn=savedTurn; }
+    if(maximizing && val>=beta)return beta;
+    if(!maximizing && val<=alpha)return alpha;
   }
+
+  orderMoves(g, moves, ttEntry&&ttEntry.bestMove, ctx.killers[ply]);
+
+  const origAlpha=alpha, origBeta=beta;
+  let best=maximizing?-Infinity:Infinity, bestMove=null;
+  for(const m of moves){
+    const s=g._applyMoveFast(m);
+    let val;
+    try{ val=alphaBetaSearch(g,depth-1,alpha,beta,!maximizing,ctx,ply+1); }
+    finally{ g._undoFast(s); }
+    if(maximizing){
+      if(val>best){best=val;bestMove=m;}
+      if(best>alpha)alpha=best;
+    } else {
+      if(val<best){best=val;bestMove=m;}
+      if(best<beta)beta=best;
+    }
+    if(beta<=alpha){
+      if(!m.capture && ctx.killers[ply]){
+        const k=ctx.killers[ply];
+        if(!sameMove(m,k[0])){ k[1]=k[0]; k[0]=m; }
+      }
+      break;
+    }
+  }
+
+  if(ctx.useTT){
+    let flag='exact';
+    if(best<=origAlpha)flag='upper';
+    else if(best>=origBeta)flag='lower';
+    ctx.tt.set(key,{depth,value:best,flag,bestMove});
+  }
+  return best;
 }
+
+function makeKillers(){
+  const k=[];
+  for(let i=0;i<80;i++)k.push([null,null]);
+  return k;
+}
+
+/* Configuración de cada nivel de dificultad */
+const AI_LEVELS=[
+  {name:'Fácil',   depth:2, iterative:false, timeLimit:0,    usePST:false, useQuiescence:false, useTT:false, useNullMove:false},
+  {name:'Normal',  depth:3, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
+  {name:'Medio',   depth:0, iterative:true,  timeLimit:900,  usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:false},
+  {name:'Difícil', depth:0, iterative:true,  timeLimit:1800, usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:true}
+];
+
 function doAIMove(){
   if(!game||!isAI||game.turn!==aiColor)return;
   const st=game.status();
   if(st.over){endGame(st);return;}
   const moves=game.legalMoves();
   if(!moves.length)return;
-  let bestMove=null, bestVal=aiColor==='w'?-Infinity:Infinity;
-  for(const m of moves){
-    const s=game._applyMoveFast(m);
-    const val=minimax(game,1,-Infinity,Infinity,aiColor==='b');
-    game._undoFast(s);
-    if(aiColor==='w'){if(val>bestVal){bestVal=val;bestMove=m;}}
-    else{if(val<bestVal){bestVal=val;bestMove=m;}}
+
+  const level=AI_LEVELS[aiDifficulty]||AI_LEVELS[0];
+  const maximizing=aiColor==='w';
+  const evalFn=level.usePST?evaluateAdvanced:evaluateMaterial;
+  let bestMove=moves[0];
+
+  if(!level.iterative){
+    /* Búsqueda a profundidad fija (niveles Fácil y Normal) */
+    const ctx={evalFn,useQuiescence:level.useQuiescence,useTT:false,tt:null,useNullMove:false,killers:makeKillers(),deadline:null,nodes:0};
+    let bestVal=maximizing?-Infinity:Infinity;
+    const ordered=moves.slice();
+    orderMoves(game,ordered,null,null);
+    for(const m of ordered){
+      const s=game._applyMoveFast(m);
+      const val=alphaBetaSearch(game,level.depth-1,-Infinity,Infinity,!maximizing,ctx,1);
+      game._undoFast(s);
+      if(maximizing?val>bestVal:val<bestVal){bestVal=val;bestMove=m;}
+    }
+  } else {
+    /* Profundización iterativa con límite de tiempo (niveles Medio y Difícil) */
+    const deadline=performance.now()+level.timeLimit;
+    const tt=new Map();
+    const killers=makeKillers();
+    let depth=1;
+    try{
+      while(performance.now()<deadline && depth<=40){
+        const ctx={evalFn,useQuiescence:level.useQuiescence,useTT:level.useTT,tt,useNullMove:level.useNullMove,killers,deadline,nodes:0};
+        let bestValThisDepth=maximizing?-Infinity:Infinity, bestMoveThisDepth=moves[0];
+        const ordered=moves.slice();
+        orderMoves(game,ordered,bestMove,null);
+        for(const m of ordered){
+          const s=game._applyMoveFast(m);
+          let val;
+          try{ val=alphaBetaSearch(game,depth-1,-Infinity,Infinity,!maximizing,ctx,1); }
+          finally{ game._undoFast(s); }
+          if(maximizing?val>bestValThisDepth:val<bestValThisDepth){bestValThisDepth=val;bestMoveThisDepth=m;}
+        }
+        bestMove=bestMoveThisDepth;
+        depth++;
+      }
+    }catch(e){
+      if(!(e instanceof SearchTimeUp))throw e;
+      /* Se acabó el tiempo a mitad de una profundidad: se conserva el mejor
+         movimiento hallado en la última profundidad ya completada */
+    }
   }
+
   if(bestMove){
     if(bestMove.promotion && bestMove.promotion!=='q'){
       const qm = moves.find(x=>x.from[0]===bestMove.from[0]&&x.from[1]===bestMove.from[1]&&x.to[0]===bestMove.to[0]&&x.to[1]===bestMove.to[1]&&x.promotion==='q');
@@ -2963,10 +3235,26 @@ document.getElementById('btnDiscardSession').onclick = () => {
 };
 
 // ===== JUEGO =====
-document.getElementById('btnPlayAI').onclick = () => {
+function beginAIGame(){
   roomCode = 'local-'+Date.now();
   myColor = Math.random()<0.5?'w':'b';
   startGameFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', myColor, true);
+}
+
+document.getElementById('btnPlayAI').onclick = () => {
+  document.getElementById('aiDifficultyModal').classList.add('visible');
+};
+
+document.querySelectorAll('#aiDifficultyModal .difficulty-option').forEach(btn=>{
+  btn.onclick = () => {
+    aiDifficulty = parseInt(btn.dataset.level, 10) || 0;
+    document.getElementById('aiDifficultyModal').classList.remove('visible');
+    beginAIGame();
+  };
+});
+
+document.getElementById('btnCancelDifficulty').onclick = () => {
+  document.getElementById('aiDifficultyModal').classList.remove('visible');
 };
 
 document.getElementById('btnExitRoom').onclick = () => {
@@ -3095,6 +3383,7 @@ function init(){
   const aiSession = loadAISession();
   if(aiSession){
     roomCode = 'local-'+Date.now();
+    aiDifficulty = (typeof aiSession.difficulty === 'number') ? aiSession.difficulty : 0;
     startGameFromFEN(aiSession.fen, aiSession.myColor, true, aiSession.history);
   }
 }
