@@ -22,6 +22,7 @@ canvas{display:block;touch-action:none}
 .btn-secondary:active{transform:scale(0.97)}
 .btn-danger{background:#3a1f1f;color:#f87171;border:1px solid rgba(239,68,68,0.2)}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
+ button{pointer-events: auto}
 .input{width:100%;padding:14px 16px;border-radius:12px;background:#0f0f17;border:1px solid rgba(255,255,255,0.1);color:#e8e8ea;font-size:15px;font-family:inherit}
 .input:focus{outline:none;border-color:#a87f4f}
 .divider{display:flex;align-items:center;gap:12px;margin:8px 0;color:#8a8aa0;font-size:12px}
@@ -62,7 +63,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
 .modal{position:absolute;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .modal.visible{display:flex}
-.modal-box{background:rgb(26 26 38 / 35%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center}
+.modal-box{background:rgb(26 26 38 / 35%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:12px}
 .modal-title{font-size:32px;font-weight:800;margin-bottom:8px}
 .modal-title.victory{color:#fbbf24}
 .modal-title.defeat{color:#ef4444}
@@ -222,11 +223,12 @@ textarea:focus{outline:none;border-color:#a87f4f}
   <div class="modal-box">
     <div class="modal-title" style="font-size:26px">Elige la dificultad</div>
     <div class="modal-subtitle">¿Cuánto quieres que razone el ordenador?</div>
-    <button class="btn btn-secondary difficulty-option" data-level="0" style="margin-bottom:8px;pointer-events:all !important">🟢 Fácil</button>
-    <button class="btn btn-secondary difficulty-option" data-level="1" style="margin-bottom:8px;pointer-events:all !important">🔵 Normal</button>
-    <button class="btn btn-secondary difficulty-option" data-level="2" style="margin-bottom:8px;pointer-events:all !important">🟠 Medio</button>
-    <button class="btn btn-secondary difficulty-option" data-level="3" style="margin-bottom:8px;pointer-events:all !important">🔴 Difícil</button>
-    <button class="btn btn-secondary" id="btnCancelDifficulty" style="pointer-events:all !important">Cancelar</button>
+    <button class="btn btn-secondary difficulty-option" data-level="0">⚪ Muy fácil</button>
+    <button class="btn btn-secondary difficulty-option" data-level="1">🟢 Fácil</button>
+    <button class="btn btn-secondary difficulty-option" data-level="2">🔵 Normal</button>
+    <button class="btn btn-secondary difficulty-option" data-level="3">🟠 Medio</button>
+    <button class="btn btn-secondary difficulty-option" data-level="4">🔴 Difícil</button>
+    <button class="btn btn-secondary" id="btnCancelDifficulty">Cancelar</button>
   </div>
 </div>
 
@@ -2408,10 +2410,11 @@ function makeKillers(){
 
 /* Configuración de cada nivel de dificultad */
 const AI_LEVELS=[
-  {name:'Fácil',   depth:2, iterative:false, timeLimit:0,    usePST:false, useQuiescence:false, useTT:false, useNullMove:false},
-  {name:'Normal',  depth:3, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
-  {name:'Medio',   depth:0, iterative:true,  timeLimit:900,  usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:false},
-  {name:'Difícil', depth:0, iterative:true,  timeLimit:1800, usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:true}
+  {name:'Muy fácil', depth:2, iterative:false, timeLimit:0,    usePST:false, useQuiescence:false, useTT:false, useNullMove:false},
+  {name:'Fácil',     depth:2, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
+  {name:'Normal',    depth:3, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
+  {name:'Medio',     depth:0, iterative:true,  timeLimit:900,  usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:false},
+  {name:'Difícil',   depth:0, iterative:true,  timeLimit:1800, usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:true}
 ];
 
 function doAIMove(){
