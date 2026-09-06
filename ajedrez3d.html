@@ -37,11 +37,11 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .game-screen{display:none;position:absolute;inset:0}
 .game-screen.active{display:block}
 #gameCanvas{position:absolute;inset:0;background:#0a0a12}
-.hud{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
+.hud{position:absolute;top:0;left:0;right:0; padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
 .hud-panel{background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;pointer-events:auto;min-width:130px}
 .hud-row{display:flex;align-items:flex-start;gap:10px}
-.captured-panel{display:flex;flex-direction:column;padding:11px 0;pointer-events:none}
-.captured-row{display:flex;align-items:center;min-height:16px;font-size:17px;line-height:1;letter-spacing:1px}
+.captured-panel{display:flex;flex-direction:column; position: absolute; left: 170px; right: 78px; padding:11px 0; pointer-events: all; overflow: scroll; scrollbar-width: none; /* Firefox */ -ms-overflow-style: none; /* IE/Edge */}
+.captured-row{display:flex;align-items:center;min-height:16px;font-size:17px;line-height:1;letter-spacing:1px;}
 .captured-row.captured-black{margin-top:9px}
 .captured-piece{display:inline-block}
 .captured-piece.captured-piece-white{color:#f5f5f5}
@@ -1439,7 +1439,13 @@ function initThree(canvas){
   //=========
 
   camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,.1,100);
-  camTheta = 0; camPhi = 1.1; camDist = 11;
+  camTheta = 0; camPhi = 1.1; 
+        console.log(IS_MOBILE);
+  if (IS_MOBILE){
+    camDist = 20;
+  } else {
+    camDist = 14;
+  }
 
   renderer=new THREE.WebGLRenderer({
     canvas,
@@ -1782,7 +1788,12 @@ function updateCamera(){
 function resetCamera(){
   camTheta = 0;
   camPhi = 1.1;
-  camDist = 11;
+
+  if (IS_MOBILE){ // Más grande = más cerca. Tamaño orig era: 11
+    camDist = 20;
+  } else {
+    camDist = 14;
+  }
   if(camera) updateCamera();
 }
 
