@@ -22,6 +22,7 @@ canvas{display:block;touch-action:none}
 .btn-secondary:active{transform:scale(0.97)}
 .btn-danger{background:#3a1f1f;color:#f87171;border:1px solid rgba(239,68,68,0.2)}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn:enabled{opacity:1;cursor:auto}
  button{pointer-events: auto}
 .input{width:100%;padding:14px 16px;border-radius:12px;background:#0f0f17;border:1px solid rgba(255,255,255,0.1);color:#e8e8ea;font-size:15px;font-family:inherit}
 .input:focus{outline:none;border-color:#a87f4f}
@@ -38,6 +39,13 @@ textarea:focus{outline:none;border-color:#a87f4f}
 #gameCanvas{position:absolute;inset:0;background:#0a0a12}
 .hud{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
 .hud-panel{background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;pointer-events:auto;min-width:130px}
+.hud-row{display:flex;align-items:flex-start;gap:10px}
+.captured-panel{display:flex;flex-direction:column;padding:11px 0;pointer-events:none}
+.captured-row{display:flex;align-items:center;min-height:16px;font-size:17px;line-height:1;letter-spacing:1px}
+.captured-row.captured-black{margin-top:9px}
+.captured-piece{display:inline-block}
+.captured-piece.captured-piece-white{color:#f5f5f5}
+.captured-piece.captured-piece-black{color:#0a0a0a;text-shadow:0 0 1px rgba(255,255,255,0.9),0 0 2px rgba(255,255,255,0.6)}
 .player-info{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
 .player-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .player-dot.white{background:#f0d9b5}
@@ -61,14 +69,17 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .history.visible{display:block}
 .history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
-.modal{position:absolute;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .modal.visible{display:flex}
 .modal-box{background:rgb(26 26 38 / 35%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.modal-box-hide{max-height: 140px; overflow: hidden}
+.modal-titulo-contenedor{display: flex; flex-direction: row; align-items: center; justify-content: center;}
 .modal-title{font-size:32px;font-weight:800;margin-bottom:8px}
 .modal-title.victory{color:#fbbf24}
 .modal-title.defeat{color:#ef4444}
 .modal-title.draw{color:#8a8aa0}
 .modal-subtitle{color:#cfcfe4;margin-bottom:24px;font-size:14px}
+.modal-resign{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .promo-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.7);z-index:90;align-items:center;justify-content:center}
 .promo-modal.visible{display:flex}
 .promo-box{background:#1a1a26;border:1px solid rgba(255,255,255,0.15);border-radius:16px;padding:16px;display:flex;gap:12px}
@@ -175,10 +186,16 @@ textarea:focus{outline:none;border-color:#a87f4f}
   <canvas id="gameCanvas"></canvas>
   <div class="quality-badge" id="qualityBadge"></div>
   <div class="hud">
-    <div class="hud-panel">
-      <div class="player-info"><span class="connection-dot" id="whiteConnDot"></span><span class="player-dot white"></span><span>Blancas</span><span class="status-tag" id="whiteStatus">—</span></div>
-      <div class="player-info" style="margin-top:6px"><span class="connection-dot" id="blackConnDot"></span><span class="player-dot black"></span><span>Negras</span><span class="status-tag" id="blackStatus">—</span></div>
-      <div style="font-size:11px;color:#8a8aa0;margin-top:8px" id="gameStateInfo">En juego</div>
+    <div class="hud-row">
+      <div class="hud-panel">
+        <div class="player-info"><span class="connection-dot" id="whiteConnDot"></span><span class="player-dot white"></span><span>Blancas</span><span class="status-tag" id="whiteStatus">—</span></div>
+        <div class="player-info" style="margin-top:6px"><span class="connection-dot" id="blackConnDot"></span><span class="player-dot black"></span><span>Negras</span><span class="status-tag" id="blackStatus">—</span></div>
+        <div style="font-size:11px;color:#8a8aa0;margin-top:8px" id="gameStateInfo">En juego</div>
+      </div>
+      <div class="captured-panel" id="capturedPanel">
+        <div class="captured-row captured-white" id="whiteCapturedRow"></div>
+        <div class="captured-row captured-black" id="blackCapturedRow"></div>
+      </div>
     </div>
   </div>
   <div class="history" id="historyPanel">
@@ -211,8 +228,11 @@ textarea:focus{outline:none;border-color:#a87f4f}
 </div>
 
 <div id="endModal" class="modal">
-  <div class="modal-box">
-    <div class="modal-title" id="endTitle">—</div>
+  <div class="modal-box" id="modalBox">
+    <div class="modal-titulo-contenedor">
+      <div class="modal-title" id="endTitle">—</div>
+      <div class="mostrar-ocultar" style="cursor: pointer !important; pointer-events: all !important" id="mostrarOcultar">&nbsp;&nbsp;👁️</div>
+    </div>
     <div class="modal-subtitle" id="endSubtitle">—</div>
     <button class="btn btn-primary" id="btnNewGame" style="margin-bottom:8px; pointer-events: all !important">Nueva partida</button>
     <button class="btn btn-secondary" id="btnExitRoom" style="pointer-events: all !important">Salir de la sala</button>
@@ -229,6 +249,15 @@ textarea:focus{outline:none;border-color:#a87f4f}
     <button class="btn btn-secondary difficulty-option" data-level="3">🟠 Medio</button>
     <button class="btn btn-secondary difficulty-option" data-level="4">🔴 Difícil</button>
     <button class="btn btn-secondary" id="btnCancelDifficulty">Cancelar</button>
+  </div>
+</div>
+
+
+<div id="resignModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-title-resign" style="font-size:14px">¿Seguro quieres rendirte?</div>
+    <button class="btn btn-secondary" id="btnConfirmaRendirse">🏳️ Rendirme</button>
+    <button class="btn btn-secondary" id="btnCancelResign">Cancelar</button>
   </div>
 </div>
 
@@ -541,7 +570,12 @@ class ChessGame {
   }
   makeMove(m){
     const piece=this.board[m.from[0]][m.from[1]];
-    const rec={move:m,san:this.toSAN(m)};
+    let capturedType=null, capturedColor=null;
+    if(m.capture){
+      const capSq = m.enPassant ? this.board[m.from[0]][m.to[1]] : this.board[m.to[0]][m.to[1]];
+      if(capSq){ capturedType=capSq.type; capturedColor=capSq.color; }
+    }
+    const rec={move:m,san:this.toSAN(m),capturedType,capturedColor};
     this.board[m.from[0]][m.from[1]]=null;
     if(m.enPassant)this.board[m.from[0]][m.to[1]]=null;
     if(m.promotion)this.board[m.to[0]][m.to[1]]={type:m.promotion,color:piece.color};
@@ -1897,6 +1931,8 @@ function saveMultiplayerSession(){
     isHost: isHost,
     roomCode: roomCode,
     roomSecret: roomSecret,
+    capturedWhite: capturedWhite,
+    capturedBlack: capturedBlack,
     timestamp: Date.now()
   };
   try {
@@ -1944,6 +1980,8 @@ function saveAISession(){
     history: game.history.map(h => h.san),
     myColor: myColor,
     difficulty: aiDifficulty,
+    capturedWhite: capturedWhite,
+    capturedBlack: capturedBlack,
     timestamp: Date.now()
   };
   try {
@@ -1982,6 +2020,26 @@ let aiColor = null;
 let aiDifficulty = 0; // 0 Fácil, 1 Normal, 2 Medio, 3 Difícil
 let pendingPromotion = null;
 let renderLoopRunning = false;
+
+// Piezas perdidas por cada bando (capturadas por el rival), en orden cronológico.
+// 'capturedWhite' = piezas blancas que fueron comidas (se muestran junto a "Blancas").
+// 'capturedBlack' = piezas negras que fueron comidas (se muestran junto a "Negras").
+let capturedWhite = [];
+let capturedBlack = [];
+const CAPTURED_PIECE_GLYPH = {p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};
+
+function updateCapturedUI(){
+  const whiteRow = document.getElementById('whiteCapturedRow');
+  const blackRow = document.getElementById('blackCapturedRow');
+  if(whiteRow){
+    whiteRow.innerHTML = capturedWhite.map(t =>
+      `<span class="captured-piece captured-piece-white">${CAPTURED_PIECE_GLYPH[t]||''}</span>`).join('');
+  }
+  if(blackRow){
+    blackRow.innerHTML = capturedBlack.map(t =>
+      `<span class="captured-piece captured-piece-black">${CAPTURED_PIECE_GLYPH[t]||''}</span>`).join('');
+  }
+}
 
 /* Identidad persistente del dispositivo y secreto de emparejamiento de la sala */
 const DEVICE_ID_KEY = 'chess3d_device_id';
@@ -2029,7 +2087,7 @@ function stopRenderLoop(){
   renderLoopRunning = false;
 }
 
-function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null){
+function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null, restoreCaptures=null){
   const threeOK = ensureThreeInitialized();
   
   game = new ChessGame(fen);
@@ -2044,6 +2102,15 @@ function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null){
   if(restoreHistory && restoreHistory.length){
     // Reconstruir historial desde SAN (simplificado)
     game.history = restoreHistory.map(san => ({san}));
+  }
+
+  // Restaurar (o reiniciar) las piezas comidas por cada bando
+  if(restoreCaptures){
+    capturedWhite = Array.isArray(restoreCaptures.white) ? restoreCaptures.white.slice() : [];
+    capturedBlack = Array.isArray(restoreCaptures.black) ? restoreCaptures.black.slice() : [];
+  } else {
+    capturedWhite = [];
+    capturedBlack = [];
   }
   
   showScreen('game');
@@ -2085,6 +2152,10 @@ function executeMove(move, broadcast=true){
   boardLocked = true;
   animateMove(from[0], from[1], to[0], to[1], ()=>{
     const rec = game.makeMove(move);
+    if(rec.capturedType){
+      if(rec.capturedColor==='w') capturedWhite.push(rec.capturedType);
+      else capturedBlack.push(rec.capturedType);
+    }
     clearSelection();
     if(renderer) syncPiecesWithGame(game);
     boardLocked = false; // recién ahora el estado lógico y visual están consistentes
@@ -2408,14 +2479,37 @@ function makeKillers(){
   return k;
 }
 
-/* Configuración de cada nivel de dificultad */
+/* Configuración de cada nivel de dificultad.
+   randomWindow: margen en centipawns dentro del cual una jugada se considera
+   "tan buena como la mejor" y por lo tanto entra en el sorteo aleatorio final.
+   Cuanto más alto el nivel, más chico el margen (menos variedad, más fuerza).
+   Se bajaron mucho los márgenes respecto de la versión anterior para evitar
+   que la IA regale piezas o cometa errores groseros incluso en los niveles
+   bajos: ahora solo elige al azar entre jugadas realmente muy parecidas en
+   valor, en vez de entre cualquier jugada dentro de un rango amplio. */
 const AI_LEVELS=[
-  {name:'Muy fácil', depth:2, iterative:false, timeLimit:0,    usePST:false, useQuiescence:false, useTT:false, useNullMove:false},
-  {name:'Fácil',     depth:2, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
-  {name:'Normal',    depth:3, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false},
-  {name:'Medio',     depth:0, iterative:true,  timeLimit:900,  usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:false},
-  {name:'Difícil',   depth:0, iterative:true,  timeLimit:1800, usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:true}
+  {name:'Muy fácil', depth:2, iterative:false, timeLimit:0,    usePST:false, useQuiescence:false, useTT:false, useNullMove:false, randomWindow:120},
+  {name:'Fácil',     depth:2, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false, randomWindow:15},
+  {name:'Normal',    depth:3, iterative:false, timeLimit:0,    usePST:true,  useQuiescence:false, useTT:false, useNullMove:false, randomWindow:8},
+  {name:'Medio',     depth:0, iterative:true,  timeLimit:900,  usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:false, randomWindow:4},
+  {name:'Difícil',   depth:0, iterative:true,  timeLimit:1800, usePST:true,  useQuiescence:true,  useTT:true,  useNullMove:true,  randomWindow:0}
 ];
+
+/* Elige al azar entre las jugadas cuyo valor está dentro de la ventana de
+   tolerancia del nivel respecto de la mejor encontrada. 'candidates' es un
+   array de {move, val}. Con randomWindow=0 siempre devuelve la mejor. */
+function pickWithinWindow(candidates, maximizing, randomWindow){
+  if(!candidates.length)return null;
+  let bestVal = maximizing ? -Infinity : Infinity;
+  for(const c of candidates){
+    if(maximizing ? c.val>bestVal : c.val<bestVal) bestVal=c.val;
+  }
+  const pool = candidates.filter(c => maximizing
+    ? c.val >= bestVal - randomWindow
+    : c.val <= bestVal + randomWindow);
+  const chosen = pool[Math.floor(Math.random()*pool.length)];
+  return chosen.move;
+}
 
 function doAIMove(){
   if(!game||!isAI||game.turn!==aiColor)return;
@@ -2432,25 +2526,28 @@ function doAIMove(){
   if(!level.iterative){
     /* Búsqueda a profundidad fija (niveles Fácil y Normal) */
     const ctx={evalFn,useQuiescence:level.useQuiescence,useTT:false,tt:null,useNullMove:false,killers:makeKillers(),deadline:null,nodes:0};
-    let bestVal=maximizing?-Infinity:Infinity;
+    const evaluated=[];
     const ordered=moves.slice();
     orderMoves(game,ordered,null,null);
     for(const m of ordered){
       const s=game._applyMoveFast(m);
       const val=alphaBetaSearch(game,level.depth-1,-Infinity,Infinity,!maximizing,ctx,1);
       game._undoFast(s);
-      if(maximizing?val>bestVal:val<bestVal){bestVal=val;bestMove=m;}
+      evaluated.push({move:m,val});
     }
+    bestMove=pickWithinWindow(evaluated,maximizing,level.randomWindow)||bestMove;
   } else {
     /* Profundización iterativa con límite de tiempo (niveles Medio y Difícil) */
     const deadline=performance.now()+level.timeLimit;
     const tt=new Map();
     const killers=makeKillers();
     let depth=1;
+    let lastCompletedEvaluated=null;
     try{
       while(performance.now()<deadline && depth<=40){
         const ctx={evalFn,useQuiescence:level.useQuiescence,useTT:level.useTT,tt,useNullMove:level.useNullMove,killers,deadline,nodes:0};
         let bestValThisDepth=maximizing?-Infinity:Infinity, bestMoveThisDepth=moves[0];
+        const evaluatedThisDepth=[];
         const ordered=moves.slice();
         orderMoves(game,ordered,bestMove,null);
         for(const m of ordered){
@@ -2458,15 +2555,23 @@ function doAIMove(){
           let val;
           try{ val=alphaBetaSearch(game,depth-1,-Infinity,Infinity,!maximizing,ctx,1); }
           finally{ game._undoFast(s); }
+          evaluatedThisDepth.push({move:m,val});
           if(maximizing?val>bestValThisDepth:val<bestValThisDepth){bestValThisDepth=val;bestMoveThisDepth=m;}
         }
         bestMove=bestMoveThisDepth;
+        lastCompletedEvaluated=evaluatedThisDepth;
         depth++;
       }
     }catch(e){
       if(!(e instanceof SearchTimeUp))throw e;
       /* Se acabó el tiempo a mitad de una profundidad: se conserva el mejor
          movimiento hallado en la última profundidad ya completada */
+    }
+    /* El sorteo se aplica solo sobre los valores de la última profundidad
+       completada por entero (los de una profundidad interrumpida por el
+       límite de tiempo quedan incompletos y no son comparables entre sí) */
+    if(lastCompletedEvaluated){
+      bestMove=pickWithinWindow(lastCompletedEvaluated,maximizing,level.randomWindow)||bestMove;
     }
   }
 
@@ -2869,6 +2974,7 @@ function updateHUD(){
   if(st.check) info = '¡Jaque!';
   if(st.over) info = 'Partida terminada';
   document.getElementById('gameStateInfo').textContent = info;
+  updateCapturedUI();
 }
 function renderHistory(){
   const list = document.getElementById('historyList');
@@ -3038,6 +3144,16 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
+// Corte explícito del micrófono al cerrar/recargar la pestaña: no depende
+// solo de que el navegador libere el hardware al destruir el documento.
+// 'pagehide' cubre además los casos de recarga/navegación que 'beforeunload'
+// no siempre dispara de forma confiable en algunos navegadores móviles.
+function releaseMicOnExit(){
+  if(micStream) resetVoiceSendState();
+}
+window.addEventListener('pagehide', releaseMicOnExit);
+window.addEventListener('beforeunload', releaseMicOnExit);
+
 // ===== CREAR SALA (HOST) =====
 document.getElementById('btnCreateRoom').onclick = async () => {
   try {
@@ -3166,7 +3282,8 @@ function resumeGame(){
   // Si hay sesión guardada, restaurarla
   const session = loadMultiplayerSession();
   if(session && session.myColor === myColor){
-    startGameFromFEN(session.fen, myColor, false, session.history);
+    startGameFromFEN(session.fen, myColor, false, session.history,
+      {white: session.capturedWhite, black: session.capturedBlack});
     // Solicitar sincronización al oponente
     if(partnerPeerId){
       moveAction.send({type:'sync_request'}, {target: partnerPeerId});
@@ -3262,6 +3379,7 @@ document.getElementById('btnCancelDifficulty').onclick = () => {
 
 document.getElementById('btnExitRoom').onclick = () => {
   document.getElementById('endModal').classList.remove('visible');
+  document.getElementById("btnResign").disabled = false; //habilito botón de "Rendirse" (para la nueva partida)
   isReconnecting = false;
   cleanupPeer();
   clearMultiplayerSession();
@@ -3271,6 +3389,7 @@ document.getElementById('btnExitRoom').onclick = () => {
 
 document.getElementById('btnNewGame').onclick = () => {
   document.getElementById('endModal').classList.remove('visible');
+  document.getElementById("btnResign").disabled = false; //habilito botón de "Rendirse" (para la nueva partida)
   startGameFromFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', myColor, isAI);
 };
 
@@ -3286,9 +3405,24 @@ document.getElementById('btnToggleHistory').onclick = () => {
 };
 document.getElementById('btnResign').onclick = () => {
   if(!game)return;
-  if(!confirm('¿Seguro que quieres rendirte?'))return;
+  // mostrar dialogo confirmacion
+  document.getElementById("resignModal").classList.add("visible");
+};
+document.getElementById('btnConfirmaRendirse').onclick = () => {
+  //ocultar dialog de confirmacionn
+  document.getElementById("resignModal").classList.remove("visible");
+
+  //enviar señal de resignacion
   if(partnerPeerId) moveAction.send({type:'resign'}, {target: partnerPeerId});
   endGame({result:'resign', winner:opponentColor||(myColor==='w'?'b':'w')});
+};
+document.getElementById('btnCancelResign').onclick = () => {
+  //oculto dialogo de confirmacion
+  document.getElementById("resignModal").classList.remove("visible");
+};
+// boton minimizar dialogo
+document.getElementById('mostrarOcultar').onclick = () => {
+  document.getElementById('modalBox').classList.toggle("modal-box-hide");
 };
 
 // ===== BOTÓN DE MICRÓFONO (toque = alternar on/off, presión prolongada = "pulsar para hablar") =====
@@ -3387,7 +3521,8 @@ function init(){
   if(aiSession){
     roomCode = 'local-'+Date.now();
     aiDifficulty = (typeof aiSession.difficulty === 'number') ? aiSession.difficulty : 0;
-    startGameFromFEN(aiSession.fen, aiSession.myColor, true, aiSession.history);
+    startGameFromFEN(aiSession.fen, aiSession.myColor, true, aiSession.history,
+      {white: aiSession.capturedWhite, black: aiSession.capturedBlack});
   }
 }
 window.addEventListener('load', init);
