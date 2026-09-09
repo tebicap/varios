@@ -38,6 +38,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .game-screen.active{display:block}
 #gameCanvas{position:absolute;inset:0;background:#0a0a12}
 .hud{position:absolute;top:0;left:0;right:0; padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
+.hud-column{display:flex;flex-direction: column;min-height:16px;font-size:17px;line-height:1;letter-spacing:1px;}
 .hud-panel{background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;pointer-events:auto;min-width:130px}
 .hud-row{display:flex;align-items:flex-start;gap:10px}
 .captured-panel{display:flex;flex-direction:column; position: absolute; left: 174px; right: 78px; padding:11px 0; pointer-events: all; overflow: scroll; scrollbar-width: none; /* Firefox */ -ms-overflow-style: none; /* IE/Edge */}
@@ -59,6 +60,8 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .connection-dot.disconnected{background:#ef4444;border-color:#ef4444}
 .connection-dot.pending{background:#f59e0b;border-color:#f59e0b;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.mensajes-contenedor{display:flex !important; flex-direction: row; align-items: flex-start; column-gap:27px; padding: 12px; background: linear-gradient(90deg, #0f10115e, transparent 25%); border-radius: 14px;}
+.mensajes-lista{position:relative;left:0;right:0;z-index:5;pointer-events:all; max-height: 61px !important; overflow: scroll;scrollbar-width: none; /* Firefox */ -ms-overflow-style: none; /* IE/Edge */; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px}
 .bottom-bar{position:absolute;bottom:0;left:0;right:0;padding:12px;display:flex;gap:8px;z-index:5;pointer-events:none}
 .bottom-bar .btn{pointer-events:auto;flex:1;min-height:48px;font-size:26px;line-height:1;padding:10px 8px}
 .bottom-bar .btn-mic{flex:0 0 auto;width:48px;height:48px;min-height:48px;padding:0;border-radius:50%;box-sizing:border-box;background:#1a1a26;color:#fff;border:3px solid #000;transition:background-color 0.15s,color 0.15s;-webkit-user-select:none;user-select:none;touch-action:none}
@@ -69,6 +72,9 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .history.visible{display:block}
 .history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
+.mostrar-ocultar{margin-left: 10px; padding: 0px 5px 3px 5px; background: #38383c63; border: 1px solid #ffffff30; border-radius: 6px; cursor: pointer !important; pointer-events: all !important}
+.mostrar-ocultar-mensajes{margin-left: 0px; margin-bottom: 8px; padding: 0px 5px 3px 5px; transform: translateX(-5px); cursor: pointer !important; pointer-events: all !important}
+.mensajes-boton-escribir{margin-left: 0px; margin-bottom: 8px; padding: 0px 5px 3px 5px; transform: translateX(-5px); cursor: pointer !important; pointer-events: all !important}
 .modal{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .modal.visible{display:flex}
 .modal-box{background:rgb(26 26 38 / 35%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:12px}
@@ -108,6 +114,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .reconnect-banner{background:#1f2937;border:1px solid rgba(99,102,241,0.3);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center}
 .reconnect-banner h3{color:#a5b4fc;margin-bottom:8px;font-size:16px}
 .reconnect-banner p{color:#9ca3af;font-size:13px;margin-bottom:12px}
+.hide{display: none}
 </style>
 </head>
 <body>
@@ -186,18 +193,35 @@ textarea:focus{outline:none;border-color:#a87f4f}
   <canvas id="gameCanvas"></canvas>
   <div class="quality-badge" id="qualityBadge"></div>
   <div class="hud">
-    <div class="hud-row">
-      <div class="hud-panel">
-        <div class="player-info"><span class="connection-dot" id="whiteConnDot"></span><span class="player-dot white"></span><span>Blancas</span><span class="status-tag" id="whiteStatus">—</span></div>
-        <div class="player-info" style="margin-top:6px"><span class="connection-dot" id="blackConnDot"></span><span class="player-dot black"></span><span>Negras</span><span class="status-tag" id="blackStatus">—</span></div>
-        <div style="font-size:11px;color:#8a8aa0;margin-top:8px" id="gameStateInfo">En juego</div>
+    <div class="hud-column">
+      <div class="hud-row">
+        <div class="hud-panel">
+          <div class="player-info"><span class="connection-dot" id="whiteConnDot"></span><span class="player-dot white"></span><span>Blancas</span><span class="status-tag" id="whiteStatus">—</span></div>
+          <div class="player-info" style="margin-top:6px"><span class="connection-dot" id="blackConnDot"></span><span class="player-dot black"></span><span>Negras</span><span class="status-tag" id="blackStatus">—</span></div>
+          <div style="font-size:11px;color:#8a8aa0;margin-top:8px" id="gameStateInfo">En juego</div>
+        </div>
+        <div class="captured-panel" id="capturedPanel">
+          <div class="captured-row captured-white" id="whiteCapturedRow"></div>
+          <div class="captured-row captured-black" id="blackCapturedRow"></div>
+        </div>
       </div>
-      <div class="captured-panel" id="capturedPanel">
-        <div class="captured-row captured-white" id="whiteCapturedRow"></div>
-        <div class="captured-row captured-black" id="blackCapturedRow"></div>
+      <!-- mensajes pannel -->
+      <div class="mensajes-contenedor" id="contenedorMensajes">
+        <div style="hud-column">
+          <div class="mostrar-ocultar-mensajes" style="" id="botonMostrarOcultarMensajes" onclick="document.getElementById('mensajesLista').classList.toggle('hide')">💬</div>
+          <div class="mensajes-boton-escribir" id="botonMensajes" onclick="document.getElementById('mensajesLista').classList.remove('hide'); dialogoEscribir()">⌨️</div>
+        </div>
+        <ul class="mensajes-lista" id="mensajesLista">
+            <li>BL: Hola como estás</li>
+            <li>BL: Gracias por conectarte</li>
+            <li>NE: Hola! que placer, gracias por la invitación</li>
+            <li>NE: 🙂</li>
+            <li>BL: 😇</li>
+        </ul>
       </div>
     </div>
   </div>
+
   <div class="history" id="historyPanel">
     <div class="history-title">Movimientos</div>
     <div id="historyList"></div>
@@ -231,7 +255,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
   <div class="modal-box" id="modalBox">
     <div class="modal-titulo-contenedor">
       <div class="modal-title" id="endTitle">—</div>
-      <div class="mostrar-ocultar" style="cursor: pointer !important; pointer-events: all !important" id="mostrarOcultar">&nbsp;&nbsp;👁️</div>
+      <div class="mostrar-ocultar" style="" id="mostrarOcultar">👁️</div>
     </div>
     <div class="modal-subtitle" id="endSubtitle">—</div>
     <button class="btn btn-primary" id="btnNewGame" style="margin-bottom:8px; pointer-events: all !important">Nueva partida</button>
@@ -258,6 +282,14 @@ textarea:focus{outline:none;border-color:#a87f4f}
     <div class="modal-title-resign" style="font-size:14px">¿Seguro quieres rendirte?</div>
     <button class="btn btn-secondary" id="btnConfirmaRendirse">🏳️ Rendirme</button>
     <button class="btn btn-secondary" id="btnCancelResign">Cancelar</button>
+  </div>
+</div>
+
+<div id="escribirModal" class="modal">
+  <div class="modal-box">
+    <textarea class="textarea-mensaje" id="textareaMensaje" rows="" cols="" placeholder="Escribe algo"></textarea>
+    <button class="btn btn-secondary" id="btnEnviarMensaje" disabled>Enviar</button>
+    <button class="btn btn-secondary" id="btnCancelarMensaje">Cancelar</button>
   </div>
 </div>
 
@@ -1871,6 +1903,7 @@ function saveMultiplayerSession(){
     roomSecret: roomSecret,
     capturedWhite: capturedWhite,
     capturedBlack: capturedBlack,
+    mensajes: mensajes,
     timestamp: Date.now()
   };
   try {
@@ -1950,6 +1983,7 @@ function clearAISession(){
    ===================================================================== */
 let game = null;
 let myColor = null;
+let mensajes = []; // historial del chat de la partida, en texto plano ("BL: ..." / "NE: ...")
 let isHost = false;
 let opponentColor = null;
 let roomCode = '';
@@ -2025,7 +2059,7 @@ function stopRenderLoop(){
   renderLoopRunning = false;
 }
 
-function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null, restoreCaptures=null){
+function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null, restoreCaptures=null, restoreMensajes=null){
   const threeOK = ensureThreeInitialized();
   
   game = new ChessGame(fen);
@@ -2050,6 +2084,12 @@ function startGameFromFEN(fen, color, vsAI=false, restoreHistory=null, restoreCa
     capturedWhite = [];
     capturedBlack = [];
   }
+
+  // Restaurar mensajes del chat si venimos de una sesión guardada; si es una
+  // partida nueva, se limpia el historial de mensajes.
+  mensajes = (!vsAI && Array.isArray(restoreMensajes)) ? restoreMensajes.slice() : [];
+  renderMensajes();
+  actualizarVisibilidadMensajes();
   
   showScreen('game');
   
@@ -2854,6 +2894,9 @@ function handlePeerMessage(msg){
       }
     } else if(msg.type === 'resign'){
       endGame({result:'resign', winner:myColor});
+    } else if(msg.type === 'chat'){
+      agregarMensaje(opponentColor, msg.text);
+      saveMultiplayerSession();
     } else if(msg.type === 'sync_request'){
       // Enviar estado completo para reconexión
       if(partnerPeerId) moveAction.send({
@@ -2861,7 +2904,8 @@ function handlePeerMessage(msg){
         fen: game.toFEN(),
         history: game.history.map(h => h.san),
         capturedWhite: capturedWhite,
-        capturedBlack: capturedBlack
+        capturedBlack: capturedBlack,
+        mensajes: mensajes
       }, {target: partnerPeerId});
     } else if(msg.type === 'sync_response'){
       // Restaurar estado del oponente
@@ -2869,6 +2913,10 @@ function handlePeerMessage(msg){
       if(msg.history) game.history = msg.history.map(san => ({san}));
       capturedWhite = Array.isArray(msg.capturedWhite) ? msg.capturedWhite.slice() : [];
       capturedBlack = Array.isArray(msg.capturedBlack) ? msg.capturedBlack.slice() : [];
+      if(Array.isArray(msg.mensajes)){
+        mensajes = msg.mensajes.slice();
+        renderMensajes();
+      }
       if(renderer) syncPiecesWithGame(game);
       updateHUD(); renderHistory();
       saveMultiplayerSession();
@@ -2933,6 +2981,49 @@ function renderHistory(){
     list.appendChild(div);
   }
   list.scrollTop = list.scrollHeight;
+}
+/* =====================================================================
+   MENSAJES (CHAT DE LA PARTIDA)
+   ===================================================================== */
+function renderMensajes(){
+  const ul = document.getElementById('mensajesLista');
+  if(!ul) return;
+  ul.innerHTML = '';
+  mensajes.forEach(m => {
+    const li = document.createElement('li');
+    li.textContent = m;
+    ul.appendChild(li);
+  });
+  ul.scrollTop = ul.scrollHeight;
+}
+function agregarMensaje(colorAutor, texto){
+  const prefijo = colorAutor === 'w' ? 'BL: ' : 'NE: ';
+  mensajes.push(prefijo + texto);
+  renderMensajes();
+}
+// El panel de mensajes no tiene sentido jugando contra la IA: se oculta por completo.
+// .mensajes-contenedor usa display:flex !important en CSS, así que hay que forzar
+// el display en línea con la misma prioridad para poder ocultarlo/mostrarlo.
+function actualizarVisibilidadMensajes(){
+  const cont = document.getElementById('contenedorMensajes');
+  if(!cont) return;
+  if(isAI) cont.style.setProperty('display', 'none', 'important');
+  else cont.style.removeProperty('display');
+}
+function validarMensajeInput(){
+  const ta = document.getElementById('textareaMensaje');
+  const btn = document.getElementById('btnEnviarMensaje');
+  if(!ta || !btn) return;
+  const valido = ta.value.trim().length > 0;
+  btn.disabled = !valido;
+  btn.style.background = valido ? '#1b7911' : '';
+}
+function dialogoEscribir(){
+  const ta = document.getElementById('textareaMensaje');
+  if(ta) ta.value = '';
+  validarMensajeInput();
+  document.getElementById('escribirModal').classList.add('visible');
+  if(ta) ta.focus();
 }
 function showToast(msg, isError=false){
   const t = document.getElementById('toast');
@@ -3225,7 +3316,7 @@ function resumeGame(){
   const session = loadMultiplayerSession();
   if(session && session.myColor === myColor){
     startGameFromFEN(session.fen, myColor, false, session.history,
-      {white: session.capturedWhite, black: session.capturedBlack});
+      {white: session.capturedWhite, black: session.capturedBlack}, session.mensajes);
     // Solicitar sincronización al oponente
     if(partnerPeerId){
       moveAction.send({type:'sync_request'}, {target: partnerPeerId});
@@ -3361,6 +3452,24 @@ document.getElementById('btnConfirmaRendirse').onclick = () => {
 document.getElementById('btnCancelResign').onclick = () => {
   //oculto dialogo de confirmacion
   document.getElementById("resignModal").classList.remove("visible");
+};
+// ===== DIÁLOGO DE ESCRITURA DE MENSAJES =====
+document.getElementById('textareaMensaje').addEventListener('input', validarMensajeInput);
+document.getElementById('btnEnviarMensaje').onclick = () => {
+  const ta = document.getElementById('textareaMensaje');
+  const texto = ta.value.trim();
+  if(!texto || !myColor) return;
+  agregarMensaje(myColor, texto);
+  if(partnerPeerId) moveAction.send({type:'chat', text:texto}, {target: partnerPeerId});
+  if(!isAI) saveMultiplayerSession();
+  document.getElementById('escribirModal').classList.remove('visible');
+  ta.value = '';
+  validarMensajeInput();
+};
+document.getElementById('btnCancelarMensaje').onclick = () => {
+  document.getElementById('escribirModal').classList.remove('visible');
+  document.getElementById('textareaMensaje').value = '';
+  validarMensajeInput();
 };
 // boton minimizar dialogo
 document.getElementById('mostrarOcultar').onclick = () => {
