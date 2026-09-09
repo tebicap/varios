@@ -3031,7 +3031,7 @@ function showToast(msg, isError=false){
   t.textContent = msg;
   t.className = 'toast visible' + (isError ? ' error' : '');
   clearTimeout(t._tm);
-  t._tm = setTimeout(()=>t.classList.remove('visible'), 3000);
+  t._tm = setTimeout(()=>t.classList.remove('visible'), 6000);
 }
 
 /* =====================================================================
