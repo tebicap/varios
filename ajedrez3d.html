@@ -40,7 +40,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .hud{position:absolute;top:0;left:0;right:0; padding:12px;display:flex;justify-content:space-between;align-items:flex-start;z-index:5;pointer-events:none}
 .hud-panel{background:rgba(15,15,23,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px 14px;pointer-events:auto;min-width:130px}
 .hud-row{display:flex;align-items:flex-start;gap:10px}
-.captured-panel{display:flex;flex-direction:column; position: absolute; left: 170px; right: 78px; padding:11px 0; pointer-events: all; overflow: scroll; scrollbar-width: none; /* Firefox */ -ms-overflow-style: none; /* IE/Edge */}
+.captured-panel{display:flex;flex-direction:column; position: absolute; left: 174px; right: 78px; padding:11px 0; pointer-events: all; overflow: scroll; scrollbar-width: none; /* Firefox */ -ms-overflow-style: none; /* IE/Edge */}
 .captured-row{display:flex;align-items:center;min-height:16px;font-size:17px;line-height:1;letter-spacing:1px;}
 .captured-row.captured-black{margin-top:9px}
 .captured-piece{display:inline-block}
@@ -726,11 +726,41 @@ function mergeGeometries(geos){
 // FUNCIONES AUXILIARES
 // ==========================================
 
-function createLathe(points, segments = 32) {
-    const pts = points.map(p => new THREE.Vector2(p[0], p[1]));
-    const geo = new THREE.LatheGeometry(pts, segments);
-    geo.computeVertexNormals();
-    return geo;
+function createLathe(points, segments = 32, phiStart = 0, phiLength = Math.PI *2 ) {
+  const pts = points.map(p => new THREE.Vector2(p[0], p[1]));
+  const geo = new THREE.LatheGeometry(pts, segments, phiStart, phiLength);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function createLatheCap(points, angle, invertir_normal = false) {
+    const shapePoints = points.map(p => new THREE.Vector2(p[0], p[1]));
+    shapePoints.reverse();
+
+    const shape = new THREE.Shape(shapePoints);
+    const cap = new THREE.ShapeGeometry(shape);
+
+    cap.rotateY(-Math.PI / 2);
+    cap.rotateY(angle);
+
+    if (invertir_normal == true){
+      // Invertir orientación de las caras
+      const index = cap.index;
+
+      for (let i = 0; i < index.count; i += 3) {
+          const a = index.getX(i);
+          const b = index.getX(i + 1);
+          const c = index.getX(i + 2);
+
+          index.setX(i, c);
+          index.setX(i + 1, b);
+          index.setX(i + 2, a);
+      }
+     }
+
+    //cap.computeVertexNormals();
+
+    return cap;
 }
 
 function addCollar(geos, y, radius, tubeRadius) {
@@ -744,254 +774,208 @@ function addCollar(geos, y, radius, tubeRadius) {
 // CABALLO (KNIGHT) - Más esbelto, compacto y con perfil tradicional plano
 // ==========================================
 function buildKnightGeometry() {
-    const geos = [];
+  const geos = [];
 
-    // --------------------------------------
-    // Base
-    // --------------------------------------
-    geos.push(createLathe([
-        [0, 0],
-        [.27, 0],
-        [.36, .035],
-        [.39, .08],
-        [.37, .13],
-        [.30, .17],
-        [.25, .21],
-        [.22, .29],
-        [.22, .36],
-        [0, .39]
-    ]));
+  //base
+  geos.push(createLathe([
+      [0, 0],
+      [.37, 0],
+      [.37, .02],
+      [.37, .035],
+      [.38, .075],
+      [.37, .09],
+      [.35, .12], // borde superior base
+      [.35, .12], // borde superior base
+      //[.28, .16],
+      [.22, .19], // base tronco ficha
+      [.22, .21], // base tronco ficha
+      [.08, 1], // cuello tronco
+      //[.28, 1], // cuello tronco
+      //[.28, 1.1], // altura de la base del hueco
+      //[.28, 1.1], // altura de la base del hueco
+  ]));
 
-    // Zócalo superior
-    geos.push(createLathe([
-        [0, .34],
-        [.21, .34],
-        [.24, .39],
-        [.21, .43],
-        [.14, .46],
-        [0, .47]
-    ]));
+  //cabeza
+  const headShape = new THREE.Shape();
+  headShape.moveTo(-.30, -.15);
+  headShape.lineTo(.01, -.23);
+  headShape.lineTo(.14, -.27); //pera
+  headShape.lineTo(.15, -.24); //boca (labio abajo)
+  headShape.lineTo(.11, -.24); 
+  headShape.lineTo(.11, -.22); 
+  headShape.lineTo(.14, -.22); 
+  headShape.lineTo(.16, -.21); //boca (labio arriba)
+  headShape.lineTo(.16, -.20); //hocico
+  headShape.lineTo(.01, -.06); //hocico subida
+  headShape.lineTo(-.06, .05); //frente
+  //headShape.lineTo(-.2, .08);  //tope cabeza, version recta
+  headShape.quadraticCurveTo(-0.12, 0.105, -.2, .08); //tope cabeza
+  //headShape.lineTo(-.33, -.06);  //nuca, version recta
+  headShape.quadraticCurveTo(-0.29, .07, -.33, -.06); //nuca
+  headShape.quadraticCurveTo(-.34, -.09, -.30, -.15); //mismo punto de INICIO (moveTo)
 
-    // --------------------------------------
-    // Cuello
-    // --------------------------------------
-    const neck = new THREE.CylinderGeometry(
-        .115, .19, .61, 32, 8
-    );
+  const head = new THREE.ExtrudeGeometry(headShape, {
+    depth: .15, bevelEnabled: true, bevelThickness: .045,
+    bevelSize: .045, bevelSegments: 6, curveSegments: 12
+  });
+  head.rotateY(-Math.PI / 2);
+  head.translate(.083, 1.09, .02);
+  head.rotateX(.07);
+  geos.push(head);
 
-    // Primero inclinamos el cuello sobre su propio centro
-    neck.rotateX(-.11);
 
-    // Luego lo colocamos de modo que su base
-    // quede exactamente centrada sobre la base
-    neck.translate(0, .74, -.01);
+  // Cara en relieve
+  const caraShape = new THREE.Shape();
+  caraShape.moveTo(-.30, -.12);
+  caraShape.quadraticCurveTo(-.2, -.17, -.15, -.12);
+  caraShape.lineTo(.01, -.20);
+  caraShape.lineTo(.14, -.26); //pera
+  caraShape.lineTo(.15, -.23); //boca (labio abajo)
+  //caraShape.lineTo(.11, -.21); 
+  caraShape.lineTo(.14, -.21); 
+  //caraShape.lineTo(.14, -.19); 
+  caraShape.lineTo(.16, -.19); //boca (labio arriba)
+  caraShape.lineTo(.16, -.19); //hocico
+  caraShape.lineTo(.01, -.05); //hocico subida
+  caraShape.lineTo(-.04, .02); //frente
+  //caraShape.lineTo(-.2, .08);  //tope cabeza, version recta
+  caraShape.quadraticCurveTo(-0.12, 0.105, -.2, .09); //tope cabeza
+  //caraShape.lineTo(-.33, -.06);  //nuca, version recta
+  caraShape.quadraticCurveTo(-0.29, .07, -.33, -.03); //nuca
+  caraShape.quadraticCurveTo(-.34, -.09, -.30, -.12); //mismo punto de INICIO (moveTo)
 
-    geos.push(neck);
+  const cara = new THREE.ExtrudeGeometry(caraShape, {
+    depth: .26, bevelEnabled: false, bevelThickness: .045,
+    bevelSize: .045, bevelSegments: 6, curveSegments: 12
+  });
+  cara.rotateY(-Math.PI / 2);
+  //cara.translate(.12, 1.03, .02);
+  cara.translate(.1405, 1.09, .02);
+  cara.rotateX(.07);
+  geos.push(cara);
 
-    // Collar
-    geos.push(createLathe([
-        [0, .97],
-        [.13, .97],
-        [.17, 1.00],
-        [.15, 1.04],
-        [.10, 1.06],
-        [0, 1.06]
-    ]));
 
-    // --------------------------------------
-    // Cabeza rectangular alargada
-    // - Nuca alta y muy redondeada
-    // - Frente más bajo
-    // - Ambos extremos redondeados
-    // --------------------------------------
+  // Crin
+  const crinShape = new THREE.Shape();
+  crinShape.moveTo(-.08, .06); //frente
+  //crinShape.lineTo(-.22, .08); //tope cabeza
+  crinShape.quadraticCurveTo(-.11, .18, -.2, .17);
+  crinShape.quadraticCurveTo(-.24, .18, -.35, .10);  //tope cabeza
+  //crinShape.quadraticCurveTo(-0.12, 0.105, -.2, .08); //tope cabeza
+  //crinShape.lineTo(-.33, -.06);  //nuca, version recta
+  crinShape.quadraticCurveTo(-0.39, .07, -.42, -.06); //nuca
+  crinShape.quadraticCurveTo(-.43, -.07, -.38, -.18); //vivel tope cuello
+  crinShape.quadraticCurveTo(-.25, -.4, -.31, -.6); //parte baja
+  //crinShape.quadraticCurveTo(-.34, -.09, -.30, -.15); //mismo punto de INICIO (moveTo)
+  //crinShape.lineTo(-.36, -.15);
 
-    const headShape = new THREE.Shape();
+  const crin = new THREE.ExtrudeGeometry(crinShape, {
+    depth: .04, bevelEnabled: true, bevelThickness: .045,
+    bevelSize: .025, bevelSegments: 6, curveSegments: 12
+  });
+  crin.rotateY(-Math.PI / 2);
+  crin.translate(.025, 1.09, .02);
+  crin.rotateX(.07);
+  geos.push(crin);
 
-    // Perfil lateral:
-    // X negativo = nuca
-    // X positivo = hocico
+  // tronco base gruesa
+  const troncoBaseGruesaShape = new THREE.Shape();
+  troncoBaseGruesaShape.moveTo(0, .15); //posicion base
+  troncoBaseGruesaShape.lineTo(-.24, .3);
+  troncoBaseGruesaShape.lineTo(-.24, .31);
+  troncoBaseGruesaShape.lineTo(-.016, .7);
 
-    headShape.moveTo(-.19, -.11);      // inferior trasero
-    headShape.lineTo( .16, -.11);      // inferior delantero
+  const troncoBaseGruesa = new THREE.ExtrudeGeometry(troncoBaseGruesaShape, {
+    depth: .2, bevelEnabled: true, bevelThickness: .045,
+    bevelSize: .045, bevelSegments: 6, curveSegments: 12
+  });
+  const troncoBaseGruesa_clonFrente = troncoBaseGruesa.clone(); //clone sin transformaciones
+  const troncoBaseGruesa_clonDer = troncoBaseGruesa.clone(); //clone sin transformaciones
+  const troncoBaseGruesa_clonIz = troncoBaseGruesa.clone(); //clone sin transformaciones
 
-    // Frente inferior redondeado
-    headShape.quadraticCurveTo(
-        .20, -.15,
-        .20, -.10
-    );
+  troncoBaseGruesa.rotateY(-Math.PI / 2);
+  troncoBaseGruesa.translate(.1, 0, 0);
+  geos.push(troncoBaseGruesa);
 
-    // Frente: más bajo
-    headShape.lineTo(.20, -.04);
+  troncoBaseGruesa_clonFrente.rotateY(Math.PI / 2);
+  troncoBaseGruesa_clonFrente.translate(-.1, 0, 0);
+  geos.push(troncoBaseGruesa_clonFrente);
 
-    // Redondeo superior del hocico
-    headShape.quadraticCurveTo(
-        .20, .10,
-        .16, .10
-    );
+  //troncoBaseGruesa_clonDer.scale(0.5, 1.6, 1);
+  troncoBaseGruesa_clonDer.rotateZ(0.18);
+  troncoBaseGruesa_clonDer.rotateY(Math.PI);
+  troncoBaseGruesa_clonDer.translate(-.1, .02, .1);
+  //troncoBaseGruesa_clonDer.translate(0, 0, .1);
+  geos.push(troncoBaseGruesa_clonDer);
 
-    // Parte superior, descendiendo ligeramente
-    // desde la nuca hacia el hocico
-    headShape.lineTo(.04, .15);
-    headShape.lineTo(-.09, .19);
+  //troncoBaseGruesa_clonIz.translate(0, 0, -.1);
+  troncoBaseGruesa_clonIz.rotateZ(0.18);
+  troncoBaseGruesa_clonIz.translate(.1, .02, -.1);
+  geos.push(troncoBaseGruesa_clonIz);
 
-    // Nuca alta y mucho más redondeada
-    headShape.quadraticCurveTo(
-        -.17, .21,
-        -.20, .15
-    );
+  // tronco ( el fino)
+  const troncoShape = new THREE.Shape();
+  troncoShape.moveTo(-.15, .2); //posicion base
+  troncoShape.lineTo(-.28, .4);
+  //troncoShape.lineTo(-.23, .93); // tope cuello (extremo izquierdo), version plana
+  troncoShape.quadraticCurveTo(-.02, .8, -.21, 1); // tope cuello
+  troncoShape.lineTo(.08, 0.85); //tope cuello (extremo derecho)
+  //troncoShape.lineTo(.28, 0.4);
+  troncoShape.quadraticCurveTo(.1, 0.5, .24, 0.4); // tope cuello
+  troncoShape.lineTo(-.15, .2); //vuelvo a posicion base
 
-    // Redondeo posterior
-    headShape.quadraticCurveTo(
-        -.21, .05,
-        -.19, -.15
-    );
+  const tronco = new THREE.ExtrudeGeometry(troncoShape, {
+    depth: .12, bevelEnabled: true, bevelThickness: .045,
+    bevelSize: .045, bevelSegments: 6, curveSegments: 12
+  });
 
-    const head = new THREE.ExtrudeGeometry(
-        headShape,
-        {
-            depth: .18,
+  tronco.rotateY(-Math.PI / 2);
+  tronco.translate(.065, 0, 0);
+  geos.push(tronco);
 
-            bevelEnabled: true,
-            bevelThickness: .045,
-            bevelSize: .045,
-            bevelSegments: 6,
+  const alto_orejas =  1.26;
+  const horiz_orejas =  -.15;
+  const rotacion_orejas = -.42;
+  const earL = new THREE.ConeGeometry(.058, .20, 16);
+  earL.rotateX(rotacion_orejas);
+  earL.scale(0.50, 1.0, 1.0);
+  earL.translate(-.065, alto_orejas, horiz_orejas);
+  earL.rotateZ(-.15);
+  earL.rotateX(.05);
+  geos.push(earL);
 
-            curveSegments: 12
-        }
-    );
+  const earR = new THREE.ConeGeometry(.058, .20, 16);
+  earR.rotateX(rotacion_orejas);
+  earR.scale(0.50, 1.0, 1.0);
+  earR.translate(.08, alto_orejas, horiz_orejas);
+  earR.rotateZ(.15);
+  earR.rotateX(.05);
+  geos.push(earR);
 
-    // Convertir el perfil lateral:
-    // X del perfil → Z de la cabeza
-    // Extrusión → ancho X
-    head.rotateY(-Math.PI / 2);
+  for (let i = 0; i < 6; i++) {
+    const mane = new THREE.SphereGeometry(.065 - i * .005, 12, 8);
+    mane.scale(.45, 1.15, 1.0);
+    mane.translate(0, .50 + i * .10, -.165 + i * .018);
+    mane.rotateX(-.11);
+    //geos.push(mane);
+  }
 
-    // Centrar el ancho
-    head.translate(.1, 1.16, .02);
+  const eyeL = new THREE.SphereGeometry(.030, 26, 7);
+  eyeL.scale(0.50, .7, 1.0);
+  eyeL.rotateX(0.3);
+  eyeL.translate(-.115, 1.04, .02);
+  geos.push(eyeL);
 
-    // Ligera inclinación
-    head.rotateX(.07);
 
-    geos.push(head);
+  const eyeR = new THREE.SphereGeometry(.030, 26, 7);
+  eyeR.scale(0.50, .7, 1.0);
+  eyeR.rotateX(0.3);
+  eyeR.translate(.133, 1.04, .02);
+  geos.push(eyeR);
 
-    // --------------------------------------
-    // Cara (Aplanada en los lados)
-    // --------------------------------------
-    const face = new THREE.SphereGeometry(
-        .175, 24, 16
-    );
-
-    face.scale(0.55, 1.0, 1.20);
-    face.translate(0, 1.13, .19);
-    face.rotateX(.04);
-
-    geos.push(face);
-
-    // --------------------------------------
-    // Hocico corto (Aplanado en los lados)
-    // --------------------------------------
-    const muzzle = new THREE.SphereGeometry(
-        .115, 24, 16
-    );
-
-    muzzle.scale(0.50, .72, 1.20);
-    muzzle.translate(0, 1.075, .305);
-
-    geos.push(muzzle);
-
-    // --------------------------------------
-    // Nariz (Aplanada en los lados)
-    // --------------------------------------
-    const nose = new THREE.SphereGeometry(
-        .048, 16, 12
-    );
-
-    nose.scale(0.50, .65, .75);
-    nose.translate(0, 1.065, .39);
-
-    geos.push(nose);
-
-    // --------------------------------------
-    // Oreja izquierda (Aplanada en los lados)
-    // --------------------------------------
-    const earL = new THREE.ConeGeometry(
-        .058, .20, 16
-    );
-    earL.scale(0.50, 1.0, 1.0); // Aplanada lateralmente
-    earL.translate(-.105, 1.42, .015);
-    earL.rotateZ(-.15);
-    earL.rotateX(.05);
-
-    geos.push(earL);
-
-    // --------------------------------------
-    // Oreja derecha (Aplanada en los lados)
-    // --------------------------------------
-    const earR = new THREE.ConeGeometry(
-        .058, .20, 16
-    );
-    earR.scale(0.50, 1.0, 1.0); // Aplanada lateralmente
-    earR.translate(.105, 1.42, .015);
-    earR.rotateZ(.15);
-    earR.rotateX(.05);
-
-    geos.push(earR);
-
-    // --------------------------------------
-    // Crin
-    // --------------------------------------
-    for (let i = 0; i < 6; i++) {
-        const mane = new THREE.SphereGeometry(
-            .065 - i * .005,
-            12,
-            8
-        );
-
-        // Aplanamos la crin en el eje X para que coincida con el perfil de la cabeza
-        mane.scale(.45, 1.15, 1.0);
-
-        // Alineamos la crin justo en la parte posterior del cuello.
-        // El cuello tiene su centro en Z = .01 y radio ~.15 a .19.
-        // Su superficie trasera se mantiene cerca de Z = -.16 a lo largo de su altura.
-        mane.translate(
-            0,
-            .50 + i * .10,          // Sube desde la base del cuello hacia la cabeza
-            -.165 + i * .018        // Se ajusta ligeramente hacia arriba para seguir la convergencia del cuello
-        );
-
-        // Inclinamos la crin exactamente igual que el cuello para que se adhiera a su superficie
-        mane.rotateX(-.11);
-
-        geos.push(mane);
-    }
-
-    // --------------------------------------
-    // Ojo izquierdo (Aplanado en los lados)
-    // --------------------------------------
-    const eyeL = new THREE.SphereGeometry(
-        .030, 16, 12
-    );
-    eyeL.scale(0.50, 1.0, 1.0); // Aplanado lateralmente
-    eyeL.translate(.145, 1.20, .205);
-
-    geos.push(eyeL);
-
-    // --------------------------------------
-    // Ojo derecho (Aplanado en los lados)
-    // --------------------------------------
-    const eyeR = new THREE.SphereGeometry(
-        .030, 16, 12
-    );
-    eyeR.scale(0.50, 1.0, 1.0); // Aplanado lateralmente
-    eyeR.translate(-.145, 1.20, .205);
-
-    geos.push(eyeR);
-
-    const result = mergeGeometries(geos);
-
-    // Más esbelto
-    result.scale(.86, 1, .86);
-
-    return result;
+  const result = mergeGeometries(geos);
+  result.scale(.86, 1, .86);
+  return result;
 }
 
 
@@ -999,73 +983,64 @@ function buildKnightGeometry() {
 // ALFIL (BISHOP) - Mitra limpia
 // ==========================================
 function buildBishopGeometry() {
-    const geos = [];
+  const geos = [];
 
-    // --------------------------------------
-    // Cuerpo
-    // --------------------------------------
-    const bodyProfile = [
-        [0, 0],
-        [.27, 0],
-        [.35, .035],
-        [.39, .08],
-        [.37, .13],
-        [.30, .17],
-        [.23, .22],
-        [.19, .29],
-        [.18, .43],
-        [.20, .56],
-        [.17, .68],
-        [.125, .75],
-        [.115, .80],
-        [0, .83]
-    ];
+  const bodyProfile = [
 
-    geos.push(createLathe(bodyProfile));
+    [0, 0],
+    [.37, 0],
+    [.37, .02],
+    [.37, .035],
+    [.38, .075],
+    [.37, .09],
+    [.35, .12], // borde superior base
+    [.35, .12], // borde superior base
+    //[.28, .16],
+    [.19, .19], // base tronco ficha
+    [.19, .21], // base tronco ficha
+    [.15, .29],
+    [.13, .46],
+    [.133, .55], //medio
+    [.14, .65], //medio
+    //[.15, .56], //subida al borde
+    //[.20, .60], //borde superior tronco
+    //[.20, .62], //borde superior tronco
+    //[.18, .64], // bajada desde borde 
+    [.15, .76], //subida al borde
+    [.20, .80], //borde superior tronco
+    [.20, .82], //borde superior tronco
+    [.18, .84], //bajada desde borde 
+    [.15, .842],
+    [.15, .85], //cuello
+    //[.05, .72], //cuello
+    [0, .85] //cierre al centro de la ficha
+  ];
+  geos.push(createLathe(bodyProfile));
 
-    // --------------------------------------
-    // Collar
-    // --------------------------------------
-    geos.push(createLathe([
-        [0, .79],
-        [.115, .79],
-        [.16, .82],
-        [.16, .86],
-        [.115, .89],
-        [0, .89]
-    ]));
+  //toroide collar
+  geos.push(createLathe([
+    [0, .79], [.115, .79], [.16, .82], [.16, .86], [.115, .89], [0, .89]
+  ]));
 
-    // --------------------------------------
-    // Mitra
-    // No hay ninguna geometría flotante.
-    // --------------------------------------
-    const mitreProfile = [
-        [0, .86],
-        [.12, .86],
-        [.16, .91],
-        [.17, .98],
-        [.15, 1.06],
-        [.125, 1.14],
-        [.085, 1.23],
-        [.040, 1.31],
-        [0, 1.37]
-    ];
+  const mitreProfile = [
+    [0, .86],
+    [.15, .92], // intermedio exacto
+    [.18, .98], //ancho bola principal
+    [.175, 1.06],
+    [.14, 1.12], //ancho bola principal
+    [.125, 1.14],
+    [.085, 1.19],
+    [.040, 1.22],
+    [0, 1.24]
+  ];
+  geos.push(createLathe(mitreProfile));
 
-    geos.push(createLathe(mitreProfile));
+  //bolita sobre la mitra
+  geos.push(new THREE.SphereGeometry(.040, 16, 10).translate(0, 1.26, 0));
 
-    // Remate superior
-    geos.push(
-        new THREE.SphereGeometry(
-            .040, 16, 10
-        ).translate(0, 1.40, 0)
-    );
-
-    const result = mergeGeometries(geos);
-
-    // Más esbelto
-    result.scale(.86, 1, .86);
-
-    return result;
+  const result = mergeGeometries(geos);
+  result.scale(.86, 1, .86);
+  return result;
 }
 
 
@@ -1074,345 +1049,297 @@ function buildBishopGeometry() {
 // ==========================================
 function buildPieceGeometries() {
 
-    const profiles = {
+  const profiles = {
+    p: [ //peon
+      [0, 0],
+      [.37, 0],
+      [.37, .02],
+      [.37, .035],
+      [.38, .075],
+      [.37, .09],
+      [.35, .12], // borde superior base
+      [.35, .12], // borde superior base
+      //[.28, .16],
+      [.19, .19], // base tronco ficha
+      [.19, .21], // base tronco ficha
+      [.15, .29],
+      [.13, .46],
+      [.14, .55],
+      [.15, .56], //subida al borde
+      [.20, .60], //borde superior tronco
+      [.20, .62], //borde superior tronco
+      [.18, .64], // bajada desde borde 
+      [.12, .65],
+      [.12, .67], //cuello
+      [.05, .72], //cuello
+      [0, .72] //cierre al centro de la ficha
+    ],
+    r: [ //torre
+      [0, 0],
+      [.37, 0],
+      [.37, .02],
+      [.37, .035],
+      [.38, .075],
+      [.37, .09],
+      [.35, .12], // borde superior base
+      [.35, .12], // borde superior base
+      //[.28, .16],
+      [.22, .19], // base tronco ficha
+      [.22, .21], // base tronco ficha
+      //[.15, .29],
+      [.20, 1], // cuello tronco
+      [.28, 1], // cuello tronco
+      [.28, 1.1], // altura de la base del hueco
+      [.28, 1.1], // altura de la base del hueco
+      //[.28, 1.2], // tope torre
+      //[.28, 1.2], // tope torre
+      //[.19, 1.2], // hueco superior
+      //[.19, 1.2], // hueco superior
+      //[.19, 1.1], // hueco superior
+      //[.19, 1.1], // hueco superior
+      [0, 1.1] //cierre al centro de la ficha
+    ],
+    q: [ //reina
+      [0, 0],
+      [.37, 0],
+      [.37, .02],
+      [.37, .035],
+      [.38, .075],
+      [.37, .09],
+      [.35, .12], // borde superior base
+      [.35, .12], // borde superior base
+      //[.28, .16],
+      [.19, .19], // base tronco ficha
+      [.19, .21], // base tronco ficha
+      [.15, .29],
+      [.13, .46],
+      [.133, .55], //medio
+      [.14, .65], //medio
+      [.15, .96], //subida al borde
+      [.20, 1.0], //borde superior tronco
+      [.20, 1.02], //borde superior tronco
+      [.18, 1.04], //bajada desde borde 
+      [.15, 1.042],
+      [.21, 1.2], //mitad cabeza
+      [.2, 1.4], //tope cabeza (sin contar rulo de arriba)
+      [.05, 1.41], //tope cabeza (sin contar rulo de arriba)
+      [.08, 1.41], //tope cabeza, cierro
+      [.092, 1.43], //mitad rulo
+      [.1, 1.45], //mitad rulo
+      [.07, 1.465],
+      [0, 1.48], //rulo cierre
+    ],
+    k: [ //rey
+      //[0, 0], [.32, 0], [.41, .04], [.44, .09], [.41, .15],
+      //[.34, .20], [.26, .25], [.23, .37], [.23, .67], [.26, .82],
+      //[.23, .94], [.20, 1.04], [.25, 1.10], [.29, 1.17], [.27, 1.23],
+      //[.21, 1.28], [.15, 1.31], [0, 1.33]
 
-        // ==================================
-        // PEÓN
-        // ==================================
-        p: [
-            [0, 0],
-            [.27, 0],
-            [.35, .035],
-            [.38, .075],
-            [.35, .12],
-            [.28, .16],
-            [.21, .21],
-            [.18, .30],
-            [.18, .48],
-            [.20, .57],
-            [.16, .64],
-            [.12, .68],
-            [0, .69]
-        ],
-
-        // ==================================
-        // TORRE
-        // ==================================
-        r: [
-            [0, 0],
-            [.29, 0],
-            [.38, .035],
-            [.42, .08],
-            [.39, .13],
-            [.32, .18],
-            [.25, .22],
-            [.22, .32],
-            [.22, .62],
-            [.24, .82],
-            [.28, .88],
-            [.30, .93],
-            [.30, 1.00],
-            [0, 1.00]
-        ],
-
-        // ==================================
-        // DAMA
-        // ==================================
-        q: [
-            [0, 0],
-            [.31, 0],
-            [.39, .035],
-            [.43, .08],
-            [.40, .14],
-            [.34, .19],
-            [.26, .24],
-            [.22, .34],
-            [.22, .58],
-            [.24, .72],
-            [.21, .82],
-            [.17, .92],
-            [.20, 1.02],
-            [.25, 1.08],
-            [.27, 1.15],
-            [.23, 1.20],
-            [.17, 1.24],
-            [.11, 1.27],
-            [0, 1.29]
-        ],
-
-        // ==================================
-        // REY
-        // ==================================
-        k: [
-            [0, 0],
-            [.32, 0],
-            [.41, .04],
-            [.44, .09],
-            [.41, .15],
-            [.34, .20],
-            [.26, .25],
-            [.23, .37],
-            [.23, .67],
-            [.26, .82],
-            [.23, .94],
-            [.20, 1.04],
-            [.25, 1.10],
-            [.29, 1.17],
-            [.27, 1.23],
-            [.21, 1.28],
-            [.15, 1.31],
-            [0, 1.33]
-        ]
-    };
+      [0, 0],
+      [.37, 0],
+      [.37, .02],
+      [.37, .035],
+      [.38, .075],
+      [.37, .09],
+      [.35, .12], // borde superior base
+      [.35, .12], // borde superior base
+      //[.28, .16],
+      [.19, .19], // base tronco ficha
+      [.19, .21], // base tronco ficha
+      [.15, .29],
+      [.13, .46],
+      [.133, .55], //medio
+      [.14, .65], //medio
+      [.15, .96], //subida al borde
+      [.20, 1.0], //borde superior tronco
+      [.20, 1.02], //borde superior tronco
+      [.18, 1.04], //bajada desde borde 
+      [.15, 1.042],
+      [.21, 1.2], //mitad cabeza
+      [.2, 1.4], //tope cabeza (sin contar rulo de arriba)
+      [.05, 1.41], //tope cabeza (sin contar rulo de arriba)
+      [.08, 1.41], //tope cabeza, cierro
+      [.092, 1.43], //mitad rulo
+      [.1, 1.45], //mitad rulo
+      [.07, 1.465],
+      [0, 1.48], //rulo cierre
+    ]
+  };
 
 
     // ==========================================
     // PEÓN
     // ==========================================
 
-    const pawnGeos = [
-        createLathe(profiles.p)
-    ];
-
-    addCollar(
-        pawnGeos,
-        .67,
-        .12,
-        .025
-    );
-
-    pawnGeos.push(
-        new THREE.SphereGeometry(
-            .14,
-            32,
-            20
-        ).translate(0, .82, 0)
-    );
-
-    pieceGeometries.p =
-        mergeGeometries(pawnGeos);
+    const pawnGeos = [createLathe(profiles.p, 32, 0, Math.PI*2)]; // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    addCollar(pawnGeos, .66, .14, .025);
+    pawnGeos.push(new THREE.SphereGeometry(.16, 32, 20).translate(0, .84, 0));
+    pieceGeometries.p = mergeGeometries(pawnGeos);
 
 
     // ==========================================
     // TORRE
     // ==========================================
 
-    const rookGeos = [
-        createLathe(profiles.r)
-    ];
+    const rookGeos = [createLathe(profiles.r)];
+    const torre_ladrillos = [
+        [0, 1.098], // base hueco torre
+        [0, 1.098], // base hueco torre
+        [.28, 1.098],
+        [.28, 1.098],
+        [.28, 1.1],
+        [.28, 1.1],
+        [.28, 1.2], // tope torre
+        [.28, 1.2], // tope torre
+        [.19, 1.2], // tope cara superior
+        [.19, 1.2], // tope cara superior
+        [.19, 1.1], // bajada hueco superior
+        [.19, 1.1], // bajada hueco superior
+      ];
+    const ancho_ladrillos_angulo = Math.PI*2/8;
+    const gap_ladrillos_angulo = ancho_ladrillos_angulo / 2 +.1; // divido largo ladrillos por cantidad de ladrillos (menos el gap)
+    const anchoMasGap_ladrillos = ancho_ladrillos_angulo + (gap_ladrillos_angulo); // 
+    //Ladrillo 1 de 4
+    rookGeos.push( createLathe(torre_ladrillos, 32, 0, ancho_ladrillos_angulo) );  // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    rookGeos.push( createLatheCap(torre_ladrillos, 0) );  // tapa inicial (en el angulo inicial)
+    rookGeos.push( createLatheCap(torre_ladrillos, 0 + ancho_ladrillos_angulo, true) );  // tapa final
+    //Ladrillo 2 de 4
+    rookGeos.push( createLathe(torre_ladrillos, 32, anchoMasGap_ladrillos, ancho_ladrillos_angulo) );  // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos) );  // tapa inicial (en el angulo inicial)
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos + ancho_ladrillos_angulo, true) );  // tapa final
+    //Ladrillo 3 de 4
+    rookGeos.push( createLathe(torre_ladrillos, 32, anchoMasGap_ladrillos*2, ancho_ladrillos_angulo) );  // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*2) );  // tapa inicial (en el angulo inicial)
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*2 + ancho_ladrillos_angulo, true) );  // tapa final
+    //Ladrillo 4 de 4
+    rookGeos.push( createLathe(torre_ladrillos, 32, anchoMasGap_ladrillos*3, ancho_ladrillos_angulo) );  // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*3) );  // tapa inicial (en el angulo inicial)
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*3 + ancho_ladrillos_angulo, true) );  // tapa final
+    //Ladrillo 5 de 4
+    rookGeos.push( createLathe(torre_ladrillos, 32, anchoMasGap_ladrillos*4, ancho_ladrillos_angulo) );  // Math.PI*2 = torno completo;  Math.PI = solo meida vuelta
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*4) );  // tapa inicial (en el angulo inicial)
+    rookGeos.push( createLatheCap(torre_ladrillos, anchoMasGap_ladrillos*4 + ancho_ladrillos_angulo, true) );  // tapa final
 
-    addCollar(
-        rookGeos,
-        .98,
-        .16,
-        .035
-    );
-
-    // Plataforma superior
-    rookGeos.push(
-        createLathe([
-            [0, 1.00], // [0, 1.00],
-            [.30, 1.00], // [.30, 1.00],
-            [.34, 1.04], // [.34, 1.04],
-            [.34, 1.10], // [.34, 1.10],
-            [0, 1.10] // [0, 1.10]
-        ])
-    );
-
-    // ------------------------------------------
-    // 8 ALMENAS
-    // ------------------------------------------
-    const battlementRadius = .245;
-
-    for (let i = 0; i < 6; i++) {
-
-        const angle =
-            i * Math.PI / 6;
-
-        const block =
-            new THREE.BoxGeometry(
-                .105,
-                .17,
-                .105
-            );
-
-        block.translate(
-            Math.sin(angle) * battlementRadius,
-            1.185,
-            Math.cos(angle) * battlementRadius
-        );
-
-        block.rotateY(angle);
-
-        rookGeos.push(block);
-    }
-
-    pieceGeometries.r =
-        mergeGeometries(rookGeos);
-
+    pieceGeometries.r = mergeGeometries(rookGeos);
 
     // ==========================================
     // DAMA
     // ==========================================
 
-    const queenGeos = [
-        createLathe(profiles.q)
-    ];
-
-    addCollar(
-        queenGeos,
-        1.25,
-        .14,
-        .03
-    );
-
-    // ------------------------------------------
-    // Corona de 8 puntas
-    // ------------------------------------------
-    const crownRadius = .15;
-
+    const queenGeos = [createLathe(profiles.q)];
+    //addCollar(queenGeos, 1.25, .14, .03);
+    const crownRadius = .16;
     for (let i = 0; i < 8; i++) {
-
-        const angle =
-            i * Math.PI / 4;
-
-        const point =
-            new THREE.ConeGeometry(
-                .040,
-                .20,
-                12
-            );
-
-        point.translate(
-            Math.sin(angle) * crownRadius,
-            1.38,
-            Math.cos(angle) * crownRadius
-        );
-
-        queenGeos.push(point);
+      const angle = i * Math.PI / 4;
+      const point = new THREE.ConeGeometry(.050, .04, 8);
+      point.scale(1, 1, 0.5);
+      point.rotateY(angle);
+      point.translate(Math.sin(angle) * crownRadius, 1.45, Math.cos(angle) * crownRadius);
+      queenGeos.push(point);
     }
 
-    // Bola superior
-    queenGeos.push(
-        new THREE.SphereGeometry(
-            .050,
-            16,
-            12
-        ).translate(0, 1.51, 0)
-    );
+    // adornos cabeza
+    const decoReinaShape = new THREE.Shape();
+      decoReinaShape.moveTo(0, .04); //posicion base
+      decoReinaShape.lineTo(-0.06, .04); //posicion base
+      //decoReinaShape.lineTo(-.162, 0.23); //asomo abajo, lineal
+      decoReinaShape.quadraticCurveTo(-.148, 0.06, -.168, 0.23); //asomo abajo
+      //decoReinaShape.lineTo(-.175, 0.4); //tope, lineal
+      decoReinaShape.quadraticCurveTo(-.175, 0.28, -.175, 0.4); //tope 
+      decoReinaShape.lineTo(-.10, 0.37);
+      decoReinaShape.lineTo(0, .15); // vulevo a posicion base
 
-    pieceGeometries.q =
-        mergeGeometries(queenGeos);
+    const decoReina = new THREE.ExtrudeGeometry(decoReinaShape, {
+      //depth: .2, bevelEnabled: true, bevelThickness: .045,
+      depth: .1, bevelEnabled: true, bevelThickness: .045,
+      bevelSize: .045, bevelSegments: 6, curveSegments: 12
+    });
+
+    //decoReina_clonFrente = decoReina.clone(); //clone sin transformaciones
+    //decoReina_clonDer = decoReina.clone(); //clone sin transformaciones
+    //decoReina_clonIz = decoReina.clone(); //clone sin transformaciones
+
+    //recorro array para colocar decoracion alrededor
+    for (let i = 0; i< 8; i++){
+
+      // test, salgo cuando no quiero renderizar/ver solo el primer item
+      //if (i > 6 ){ break}
+
+      const angle = i * Math.PI / 4;
+      const radio = .01;
+      const decoReina_clon = decoReina.clone();
+
+      //rotacion tipo flor
+      //decoReina_clon.rotateY(angle); //rotación tipo flor, rotación inicial
+      //decoReina_clon.rotateY(2*Math.PI / 8); //rotación tipo flor
+
+      //rotacion
+      decoReina_clon.rotateY(angle);
+      //decoReina_clon.translate(0, 0, -0.05); //este muestra el primer objeto en su posición correcta
+
+      // para el 1ro es:             0 -0.05 
+      // para el 2do es ambos %2:    0.025 -0.025 
+      // para el 3ro es %1 y *0:     0.05  0
+      // para el 4to es  %2 y 0.05:  -0.025 0.05
+      //console.log("sin: ", Number( (Math.sin(angle)*0.1/2).toFixed(3)));
+      const seno = Number( (-Math.sin(angle)*0.1/2).toFixed(3));
+      //console.log("cos: ", Number( (-Math.cos(angle)*0.1/2).toFixed(3)) );
+      const coseno = Number( (-Math.cos(angle)*0.1/2).toFixed(3));
+      decoReina_clon.translate(seno, 1, coseno); 
+      queenGeos.push(decoReina_clon);
+
+    }
+
+    //este bloque solo VER y modelar el original
+    decoReina.rotateY(-Math.PI / 2);
+    decoReina.translate(.05, 1, 0);
+    //queenGeos.push(decoReina); //ocultar despues de modelar
+
+    //bolita sobre la cabeza
+    queenGeos.push(new THREE.SphereGeometry(.040, 16, 10).translate(0, 1.47, 0));
+
+
+    addCollar(queenGeos, .93, .14, .025); //anillo menor debajo del cuello
+
+    pieceGeometries.q = mergeGeometries(queenGeos);
 
 
     // ==========================================
     // REY
     // ==========================================
 
-    const kingGeos = [
-        createLathe(profiles.k)
-    ];
-
-    addCollar(
-        kingGeos,
-        1.31,
-        .15,
-        .03
-    );
-
-    // ------------------------------------------
-    // Corona superior
-    // ------------------------------------------
-    kingGeos.push(
-        createLathe([
-            [0, 1.30],
-            [.16, 1.30],
-            [.19, 1.34],
-            [.17, 1.39],
-            [0, 1.42]
-        ])
-    );
-
-    // ------------------------------------------
-    // Cruz vertical
-    // ------------------------------------------
-    const vert =
-        new THREE.BoxGeometry(
-            .060,
-            .30,
-            .060
-        );
-
-    vert.translate(
-        0,
-        1.56,
-        0
-    );
-
-    kingGeos.push(vert);
-
-    // ------------------------------------------
-    // Cruz horizontal
-    // ------------------------------------------
-    const horz =
-        new THREE.BoxGeometry(
-            .20,
-            .060,
-            .060
-        );
-
-    horz.translate(
-        0,
-        1.61,
-        0
-    );
-
-    kingGeos.push(horz);
-
-    pieceGeometries.k =
-        mergeGeometries(kingGeos);
+    const kingGeos = [createLathe(profiles.k)];
+    addCollar(kingGeos, 1.31, .15, .03);
+    kingGeos.push(createLathe([
+      [0, 1.30], [.16, 1.30], [.19, 1.34], [.17, 1.39], [0, 1.42]
+    ]));
+    const cruz_vert = new THREE.BoxGeometry(.060, .17, .060);
+    cruz_vert.translate(0, 1.54, 0);
+    kingGeos.push(cruz_vert);
+    const cruz_horz = new THREE.BoxGeometry(.16, .060, .060);
+    cruz_horz.translate(0, 1.55, 0);
+    kingGeos.push(cruz_horz);
+    addCollar(kingGeos, .93, .14, .025); //anillo menor debajo del cuello
+    addCollar(kingGeos, 1.38, .18, .025); //anillo en tope de cabeza
+    pieceGeometries.k = mergeGeometries(kingGeos);
 
 
     // ==========================================
     // CABALLO + ALFIL
     // ==========================================
 
-    pieceGeometries.n =
-        buildKnightGeometry();
+    pieceGeometries.n = buildKnightGeometry();
+    pieceGeometries.b = buildBishopGeometry();
 
-    pieceGeometries.b =
-        buildBishopGeometry();
+    // Adelgazar piezas de torno (igual que en el juego)
+    pieceGeometries.p.scale(.86, 1, .86);
+    pieceGeometries.r.scale(.86, 1, .86);
+    pieceGeometries.q.scale(.86, 1, .86);
+    pieceGeometries.k.scale(.86, 1, .86);
 
+    for (const key in pieceGeometries) pieceGeometries[key].computeVertexNormals();
 
-    // ==========================================
-    // ADELGAZAR PIEZAS DE TORNO
-    // ==========================================
-
-    pieceGeometries.p.scale(
-        .86, 1, .86
-    );
-
-    pieceGeometries.r.scale(
-        .86, 1, .86
-    );
-
-    pieceGeometries.q.scale(
-        .86, 1, .86
-    );
-
-    pieceGeometries.k.scale(
-        .86, 1, .86
-    );
-
-
-    // ==========================================
-    // NORMALES
-    // ==========================================
-
-    for (const key in pieceGeometries) {
-        pieceGeometries[key]
-            .computeVertexNormals();
-    }
+    return pieceGeometries;
 }
 
 function initThree(canvas){
@@ -2175,10 +2102,10 @@ function executeMove(move, broadcast=true){
     playMoveSound(rec);
     updateSessionOnMove(); // Guardar sesión en cada movimiento
     const st = game.status();
-    if(st.over){ endGame(st); return; }
     if(broadcast && partnerPeerId){
       moveAction.send({type:'move', move:stripMoveExtras(move), fen:game.toFEN()}, {target: partnerPeerId});
     }
+    if(st.over){ endGame(st); return; }
     if(isAI && game.turn===aiColor) setTimeout(doAIMove, 500);
   });
 }
@@ -2932,12 +2859,16 @@ function handlePeerMessage(msg){
       if(partnerPeerId) moveAction.send({
         type:'sync_response',
         fen: game.toFEN(),
-        history: game.history.map(h => h.san)
+        history: game.history.map(h => h.san),
+        capturedWhite: capturedWhite,
+        capturedBlack: capturedBlack
       }, {target: partnerPeerId});
     } else if(msg.type === 'sync_response'){
       // Restaurar estado del oponente
       game.loadFEN(msg.fen);
       if(msg.history) game.history = msg.history.map(san => ({san}));
+      capturedWhite = Array.isArray(msg.capturedWhite) ? msg.capturedWhite.slice() : [];
+      capturedBlack = Array.isArray(msg.capturedBlack) ? msg.capturedBlack.slice() : [];
       if(renderer) syncPiecesWithGame(game);
       updateHUD(); renderHistory();
       saveMultiplayerSession();
