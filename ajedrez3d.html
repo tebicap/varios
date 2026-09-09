@@ -209,7 +209,8 @@ textarea:focus{outline:none;border-color:#a87f4f}
       <div class="mensajes-contenedor" id="contenedorMensajes">
         <div style="hud-column">
           <div class="mostrar-ocultar-mensajes" style="" id="botonMostrarOcultarMensajes" onclick="document.getElementById('mensajesLista').classList.toggle('hide')">💬</div>
-          <div class="mensajes-boton-escribir" id="botonMensajes" onclick="document.getElementById('mensajesLista').classList.remove('hide'); dialogoEscribir()">⌨️</div>
+          <div class="mensajes-boton-escribir" id="botonMensajes" onclick="document.getElementById('mensajesLista').classList.remove('hide'); document.getElementById('escribirModal').classList.add('visible')
+">⌨️</div>
         </div>
         <ul class="mensajes-lista" id="mensajesLista">
             <li>BL: Hola como estás</li>
@@ -287,7 +288,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 
 <div id="escribirModal" class="modal">
   <div class="modal-box">
-    <textarea class="textarea-mensaje" id="textareaMensaje" rows="" cols="" placeholder="Escribe algo"></textarea>
+    <textarea class="textarea-mensaje" id="textareaMensaje" style="pointer-events: all !important;" rows="" cols="" placeholder="Escribe algo"></textarea>
     <button class="btn btn-secondary" id="btnEnviarMensaje" disabled>Enviar</button>
     <button class="btn btn-secondary" id="btnCancelarMensaje">Cancelar</button>
   </div>
