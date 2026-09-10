@@ -1154,13 +1154,20 @@ function buildPieceGeometries() {
       [.18, 1.04], //bajada desde borde 
       [.15, 1.042],
       [.21, 1.2], //mitad cabeza
-      [.2, 1.4], //tope cabeza (sin contar rulo de arriba)
-      [.05, 1.41], //tope cabeza (sin contar rulo de arriba)
-      [.08, 1.41], //tope cabeza, cierro
-      [.092, 1.43], //mitad rulo
-      [.1, 1.45], //mitad rulo
-      [.07, 1.465],
-      [0, 1.48], //rulo cierre
+      [.2, 1.33], //tope cabeza (sin contar rulo de arriba)
+      [.05, 1.34], //tope cabeza (sin contar rulo de arriba)
+      [.08, 1.34], //tope cabeza, cierro
+      [.092, 1.34], //mitad rulo
+      [.1, 1.36], //mitad rulo
+      [.07, 1.375],
+      [0, 1.39], //rulo cierre
+      //[.2, 1.4], //tope cabeza (sin contar rulo de arriba)
+      //[.05, 1.41], //tope cabeza (sin contar rulo de arriba)
+      //[.08, 1.41], //tope cabeza, cierro
+      //[.092, 1.43], //mitad rulo
+      //[.1, 1.45], //mitad rulo
+      //[.07, 1.465],
+      //[0, 1.48], //rulo cierre
     ],
     k: [ //rey
       //[0, 0], [.32, 0], [.41, .04], [.44, .09], [.41, .15],
@@ -1267,19 +1274,19 @@ function buildPieceGeometries() {
       const point = new THREE.ConeGeometry(.050, .04, 8);
       point.scale(1, 1, 0.5);
       point.rotateY(angle);
-      point.translate(Math.sin(angle) * crownRadius, 1.45, Math.cos(angle) * crownRadius);
+      point.translate(Math.sin(angle) * crownRadius, 1.36, Math.cos(angle) * crownRadius);
       queenGeos.push(point);
     }
 
-    // adornos cabeza
+    // adornos envolviendo cabeza
     const decoReinaShape = new THREE.Shape();
       decoReinaShape.moveTo(0, .04); //posicion base
       decoReinaShape.lineTo(-0.06, .04); //posicion base
       //decoReinaShape.lineTo(-.162, 0.23); //asomo abajo, lineal
       decoReinaShape.quadraticCurveTo(-.148, 0.06, -.168, 0.23); //asomo abajo
       //decoReinaShape.lineTo(-.175, 0.4); //tope, lineal
-      decoReinaShape.quadraticCurveTo(-.175, 0.28, -.175, 0.4); //tope 
-      decoReinaShape.lineTo(-.10, 0.37);
+      decoReinaShape.quadraticCurveTo(-.175, 0.28, -.175, 0.3); //tope 
+      decoReinaShape.lineTo(-.10, 0.27);
       decoReinaShape.lineTo(0, .15); // vulevo a posicion base
 
     const decoReina = new THREE.ExtrudeGeometry(decoReinaShape, {
@@ -1329,7 +1336,7 @@ function buildPieceGeometries() {
     //queenGeos.push(decoReina); //ocultar despues de modelar
 
     //bolita sobre la cabeza
-    queenGeos.push(new THREE.SphereGeometry(.040, 16, 10).translate(0, 1.47, 0));
+    queenGeos.push(new THREE.SphereGeometry(.040, 16, 10).translate(0, 1.38, 0));
 
 
     addCollar(queenGeos, .93, .14, .025); //anillo menor debajo del cuello
@@ -1346,11 +1353,11 @@ function buildPieceGeometries() {
     kingGeos.push(createLathe([
       [0, 1.30], [.16, 1.30], [.19, 1.34], [.17, 1.39], [0, 1.42]
     ]));
-    const cruz_vert = new THREE.BoxGeometry(.060, .17, .060);
-    cruz_vert.translate(0, 1.54, 0);
+    const cruz_vert = new THREE.BoxGeometry(.060, .20, .060);
+    cruz_vert.translate(0, 1.57, 0);
     kingGeos.push(cruz_vert);
     const cruz_horz = new THREE.BoxGeometry(.16, .060, .060);
-    cruz_horz.translate(0, 1.55, 0);
+    cruz_horz.translate(0, 1.58, 0);
     kingGeos.push(cruz_horz);
     addCollar(kingGeos, .93, .14, .025); //anillo menor debajo del cuello
     addCollar(kingGeos, 1.38, .18, .025); //anillo en tope de cabeza
