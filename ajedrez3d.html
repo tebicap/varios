@@ -72,12 +72,13 @@ textarea:focus{outline:none;border-color:#a87f4f}
 .history.visible{display:block}
 .history-title{font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .history-move{font-size:13px;padding:4px 6px;border-radius:4px;font-family:monospace}
-.mostrar-ocultar{margin-left: 10px; padding: 0px 5px 3px 5px; background: #38383c63; border: 1px solid #ffffff30; border-radius: 6px; cursor: pointer !important; pointer-events: all !important}
+.mostrar-ocultar{margin-left: 10px; padding: 1px 5px 2px 5px; background: #38383c63; border: 1px solid #ffffff30; border-radius: 6px; cursor: pointer !important; pointer-events: all !important}
 .mostrar-ocultar-mensajes{margin-left: 0px; margin-bottom: 8px; padding: 0px 5px 3px 5px; transform: translateX(-5px); cursor: pointer !important; pointer-events: all !important}
 .mensajes-boton-escribir{margin-left: 0px; margin-bottom: 8px; padding: 0px 5px 3px 5px; transform: translateX(-5px); cursor: pointer !important; pointer-events: all !important}
 .modal{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:100;padding:20px; pointer-events: none}
 .modal.visible{display:flex}
 .modal-box{background:rgb(26 26 38 / 35%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.modal-box-solid{background:rgb(26,26,38);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;max-width:400px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:12px}
 .modal-box-hide{max-height: 140px; overflow: hidden}
 .modal-titulo-contenedor{display: flex; flex-direction: row; align-items: center; justify-content: center;}
 .modal-title{font-size:32px;font-weight:800;margin-bottom:8px}
@@ -265,7 +266,7 @@ textarea:focus{outline:none;border-color:#a87f4f}
 </div>
 
 <div id="aiDifficultyModal" class="modal">
-  <div class="modal-box">
+  <div class="modal-box-solid">
     <div class="modal-title" style="font-size:26px">Elige la dificultad</div>
     <div class="modal-subtitle">¿Cuánto quieres que razone el ordenador?</div>
     <button class="btn btn-secondary difficulty-option" data-level="0">⚪ Muy fácil</button>
@@ -374,6 +375,13 @@ class ChessGame {
   loadFEN(fen) {
     const parts = fen.split(' ');
     const rows = parts[0].split('/');
+    // Limpiar el tablero antes de repoblarlo: si no se hace, las casillas que
+    // el nuevo FEN marca como vacías (dígitos) nunca se sobreescriben, y
+    // conservan la pieza que tenían de un estado anterior de este mismo
+    // objeto `game` (por ejemplo al recibir un FEN de sincronización o de
+    // una partida nueva sobre un `game` ya existente), dando la sensación de
+    // que quedan piezas viejas mezcladas con las nuevas.
+    this.board = Array.from({length:8},()=>new Array(8).fill(null));
     for (let r = 0; r < 8; r++) {
       let c = 0;
       for (const ch of rows[r]) {
