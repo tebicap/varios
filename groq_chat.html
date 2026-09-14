@@ -1012,6 +1012,7 @@
         const MODELS = {
             // Deprecated: 
             'openai/gpt-oss-120b': { shortName: 'GPT-OSS', htmlName: 'GPT<br>OSS', fullName: 'GPT-OSS-120b' },
+            'qwen/qwen3.8-27b': { shortName: 'QWN-3.8', htmlName: 'QWEN<br>3.8', fullName: 'QWEN-3.8-27b' },
             'groq/compound': { shortName: 'CMP', htmlName: 'CMP', fullName: 'COMPOUND' }
         };
         
@@ -1496,6 +1497,18 @@
                 
                 // Defino JSON según modelos (pueden haber modelos deprecated pero no afecta la lógica)
                 const json_opciones = {
+                    'qwen/qwen3.8-27b':
+                            {
+                                model: 'qwen/qwen3.8-27b',
+                                messages: messagesToSend,
+                                temperature: 0.6,
+                                top_p: 0.95,
+                                reasoning_effort: "medium",
+                                max_completion_tokens: 7000,
+                                reasoning_effort: "default",
+                                stream: true,
+                                stop: null
+                            },
                     'openai/gpt-oss-120b':
                             {
                                 model: 'openai/gpt-oss-120b',
