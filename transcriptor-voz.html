@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Transcribir · Voz a texto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12;
+    --surface:#151822;
+    --surface-2:#1c2030;
+    --border:#282e3f;
+    --text:#eef1f6;
+    --text-muted:#8891a4;
+    --accent:#37d6a0;
+    --accent-dim:#1f7a5c;
+    --rec:#ff5c5c;
+    --rec-dim:#4a2323;
+    --wait:#f5b942;
+    --danger:#ff5c5c;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  button{font-family:inherit;}
+
+  #app{
+    position:fixed;
+    inset:0;
+    max-width:520px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    background:linear-gradient(180deg,#0c0f15 0%, #0b0d12 220px);
+    border-left:1px solid var(--border);
+    border-right:1px solid var(--border);
+    overflow:hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:16px 18px 14px;
+    border-bottom:1px solid var(--border);
+    position:relative;
+    z-index:2;
+  }
+  .wave-logo{width:22px;height:16px;display:flex;align-items:flex-end;gap:2.5px;}
+  .wave-logo span{
+    width:3.5px;background:var(--accent);border-radius:2px;
+    animation:wave-idle 2.2s ease-in-out infinite;
+  }
+  .wave-logo span:nth-child(1){height:40%;animation-delay:0s;}
+  .wave-logo span:nth-child(2){height:100%;animation-delay:.2s;}
+  .wave-logo span:nth-child(3){height:65%;animation-delay:.4s;}
+  .wave-logo span:nth-child(4){height:85%;animation-delay:.1s;}
+  @keyframes wave-idle{
+    0%,100%{transform:scaleY(.5);}
+    50%{transform:scaleY(1);}
+  }
+  header h1{
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:.01em;
+    margin:0;
+  }
+  header .sub{
+    font-size:12px;
+    color:var(--text-muted);
+    margin-left:auto;
+    font-family:var(--mono);
+  }
+
+  /* ---------- Chat area ---------- */
+  .chat{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding:16px 14px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .empty-state{
+    margin:auto;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+    line-height:1.5;
+    padding:0 30px;
+    max-width:320px;
+  }
+
+  .msg{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--accent-dim);
+    border-radius:var(--radius-md);
+    padding:12px 13px 10px;
+    animation:msg-in .22s ease-out;
+  }
+  @keyframes msg-in{
+    from{opacity:0; transform:translateY(6px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .msg-text{
+    margin:0 0 8px;
+    font-size:15px;
+    line-height:1.5;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .msg-edit{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--accent-dim);
+    color:var(--text);
+    border-radius:var(--radius-sm);
+    padding:8px 10px;
+    font-family:inherit;
+    font-size:15px;
+    line-height:1.5;
+    resize:none;
+    min-height:60px;
+    max-height:600px;
+    overflow-y:auto;
+    display:block;
+    box-sizing:border-box;
+    margin-bottom:8px;
+  }
+  .msg-edit:focus{outline:none; border-color:var(--accent);}
+
+  .msg-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .msg-time{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .msg-actions{display:flex; gap:6px;}
+  .iconChip{
+    width:28px;height:28px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .iconChip:hover{color:var(--text); border-color:var(--accent-dim); background:var(--surface-2);}
+  .iconChip:active{transform:scale(.94);}
+  .chip{
+    height:28px;
+    padding:0 12px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text-muted);
+    font-size:12.5px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .chip-save{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#06231a;
+    font-weight:600;
+  }
+
+  /* ---------- Bottom bar ---------- */
+  .bottombar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 14px calc(12px + var(--safe-b));
+    border-top:1px solid var(--border);
+    background:rgba(11,13,18,.9);
+    backdrop-filter:blur(10px);
+    position:relative;
+    z-index:2;
+  }
+  .iconBtn{
+    flex:0 0 auto;
+    width:48px;height:48px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-muted);
+    font-size:19px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:border-color .15s, color .15s;
+  }
+  .iconBtn:hover{color:var(--text); border-color:var(--accent-dim);}
+  .iconBtn:active{transform:scale(.95);}
+
+  .control-slot{flex:1 1 auto; min-width:0;}
+
+  .mic-btn{
+    width:100%;
+    height:48px;
+    border-radius:24px;
+    border:1px solid var(--accent-dim);
+    background:var(--surface-2);
+    color:var(--accent);
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:.03em;
+    display:flex;align-items:center;justify-content:center;
+    gap:8px;
+    cursor:pointer;
+    -webkit-user-select:none; user-select:none;
+    touch-action:none;
+    transition:background .15s, transform .1s;
+  }
+  .mic-btn:active{transform:scale(.98);}
+
+  .mic-btn--recording{
+    background:var(--rec-dim);
+    border-color:var(--rec);
+    color:#ffdede;
+    justify-content:space-between;
+    padding:0 18px;
+  }
+  .rec-label{display:flex; align-items:center; gap:8px; font-weight:600; font-size:13.5px;}
+  .rec-label #recTimer{font-family:var(--mono); font-weight:500;}
+  .rec-hint{font-size:11px; color:#ffb3b3; font-weight:500;}
+
+  .eq-bars{display:flex; align-items:center; gap:2.5px; height:16px;}
+  .eq-bars span{
+    width:3px; background:var(--rec); border-radius:2px;
+    animation:eq-bounce .9s ease-in-out infinite;
+  }
+  .eq-bars span:nth-child(1){animation-delay:0s;}
+  .eq-bars span:nth-child(2){animation-delay:.18s;}
+  .eq-bars span:nth-child(3){animation-delay:.36s;}
+  @keyframes eq-bounce{
+    0%,100%{height:35%;}
+    50%{height:100%;}
+  }
+
+  .notif{
+    width:100%;
+    height:48px;
+    border-radius:24px;
+    display:flex;align-items:center;justify-content:center;
+    gap:9px;
+    font-size:13.5px;
+    font-weight:600;
+    border:1px solid var(--border);
+  }
+  .notif--wait{
+    background:rgba(245,185,66,.08);
+    border-color:var(--wait);
+    color:var(--wait);
+  }
+  .notif--error{
+    background:rgba(255,92,92,.08);
+    border-color:var(--danger);
+    color:#ffb3b3;
+  }
+  .spinner{
+    width:15px;height:15px;
+    border-radius:50%;
+    border:2px solid rgba(245,185,66,.25);
+    border-top-color:var(--wait);
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .api-form{
+    display:flex;
+    gap:8px;
+    width:100%;
+  }
+  .api-form input{
+    flex:1 1 auto;
+    min-width:0;
+    height:48px;
+    border-radius:24px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    padding:0 16px;
+    font-size:14px;
+  }
+  .api-form input:focus{outline:none; border-color:var(--accent);}
+  .api-form input::placeholder{color:var(--text-muted);}
+  .api-save{
+    flex:0 0 auto;
+    height:48px;
+    padding:0 18px;
+    border-radius:24px;
+    border:1px solid var(--accent-dim);
+    background:var(--accent);
+    color:#06231a;
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+
+  /* ---------- Modal ---------- */
+  .modal{
+    position:absolute; inset:0;
+    background:rgba(6,7,10,.6);
+    display:flex; align-items:flex-end;
+    z-index:20;
+  }
+  .modal.hidden{display:none;}
+  .modal-card{
+    width:100%;
+    background:var(--surface);
+    border-top:1px solid var(--border);
+    border-radius:20px 20px 0 0;
+    padding:18px 18px calc(18px + var(--safe-b));
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    animation:sheet-in .2s ease-out;
+  }
+  @keyframes sheet-in{
+    from{transform:translateY(24px); opacity:.6;}
+    to{transform:translateY(0); opacity:1;}
+  }
+  .modal-card h2{
+    margin:0 0 6px;
+    font-size:15px;
+    font-weight:600;
+    color:var(--text-muted);
+  }
+  .modal-btn{
+    height:46px;
+    border-radius:var(--radius-md);
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text);
+    font-size:14px;
+    font-weight:500;
+    text-align:left;
+    padding:0 16px;
+    cursor:pointer;
+  }
+  .modal-btn.danger{color:#ffb3b3; border-color:rgba(255,92,92,.35);}
+  .modal-btn.close{
+    color:var(--text-muted);
+    background:transparent;
+    text-align:center;
+    margin-top:4px;
+  }
+
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="wave-logo"><span></span><span></span><span></span><span></span></div>
+    <h1>Transcribir</h1>
+    <span class="sub" id="msgCount"></span>
+  </header>
+
+  <main class="chat" id="chat"></main>
+
+  <div class="bottombar">
+    <button class="iconBtn" id="gearBtn" aria-label="Configuración">⚙</button>
+    <div class="control-slot" id="controlSlot"></div>
+  </div>
+
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-card">
+      <h2>Configuración</h2>
+      <button class="modal-btn danger" id="clearApiKeyBtn">Limpiar clave API</button>
+      <button class="modal-btn danger" id="clearMessagesBtn">Limpiar mensajes</button>
+      <button class="modal-btn close" id="closeSettingsBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_KEY_STORAGE = 'transcriber_groq_api_key';
+  const MSG_STORAGE = 'transcriber_messages_v1';
+  const TAP_THRESHOLD = 350; // ms — below this a press/release counts as "tap to toggle"
+
+  const chatEl = document.getElementById('chat');
+  const controlSlot = document.getElementById('controlSlot');
+  const gearBtn = document.getElementById('gearBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const clearApiKeyBtn = document.getElementById('clearApiKeyBtn');
+  const clearMessagesBtn = document.getElementById('clearMessagesBtn');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const msgCountEl = document.getElementById('msgCount');
+
+  let apiKey = localStorage.getItem(API_KEY_STORAGE) || null;
+  let messages = loadMessages();
+  const editingIds = new Set();
+  const drafts = new Map();   // id -> texto en edición (sin guardar)
+  let lastEditId = null;      // último textarea de edición enfocado
+  let recordTarget = null;    // destino de la transcripción si se grabó en modo edición
+
+  let appState = 'idle'; // idle | recording | processing | error
+  let toggleMode = false;
+  let holdConfirmed = false;
+  let holdConfirmHandle = null;
+  let pressStartTime = 0;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let currentStream = null;
+  let recordStartTime = 0;
+  let timerHandle = null;
+
+  // ---------------- Storage helpers ----------------
+  function loadMessages(){
+    try{ return JSON.parse(localStorage.getItem(MSG_STORAGE) || '[]'); }
+    catch(_){ return []; }
+  }
+  function saveMessages(){ localStorage.setItem(MSG_STORAGE, JSON.stringify(messages)); }
+
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function uid(){
+    return (crypto.randomUUID ? crypto.randomUUID() : 'm_' + Date.now() + '_' + Math.random().toString(16).slice(2));
+  }
+
+  function formatMMSS(totalSeconds){
+    const m = Math.floor(totalSeconds/60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  // ---------------- Messages rendering ----------------
+  function renderMessages(){
+    if(messages.length === 0){
+      chatEl.innerHTML = `<div class="empty-state">Tus transcripciones van a aparecer acá. Mantené presionado o tocá el botón de abajo para empezar a grabar.</div>`;
+    } else {
+      chatEl.innerHTML = messages.map(renderMessageCard).join('');
+      chatEl.querySelectorAll('.msg-edit').forEach(autoGrow);
+    }
+    msgCountEl.textContent = messages.length ? `${messages.length} mensaje${messages.length===1?'':'s'}` : '';
+  }
+
+  function renderMessageCard(m){
+    const d = new Date(m.date);
+    const dateStr = d.toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const isEditing = editingIds.has(m.id);
+    return `
+    <article class="msg" data-id="${m.id}">
+      <div class="msg-body">
+        ${isEditing
+          ? `<textarea class="msg-edit" data-id="${m.id}" rows="1">${escapeHtml(drafts.has(m.id) ? drafts.get(m.id) : m.text)}</textarea>`
+          : `<p class="msg-text">${escapeHtml(m.text)}</p>`}
+      </div>
+      <div class="msg-meta">
+        <span class="msg-time">${dateStr} · ${timeStr}</span>
+        <div class="msg-actions">
+          ${isEditing ? `
+            <button data-action="save" data-id="${m.id}" class="chip chip-save">Guardar</button>
+            <button data-action="cancel" data-id="${m.id}" class="chip">Cancelar</button>
+          ` : `
+            <button data-action="copy" data-id="${m.id}" class="iconChip" aria-label="Copiar">⧉</button>
+            <button data-action="top" data-id="${m.id}" class="iconChip" aria-label="Subir">⇧</button>
+            <button data-action="edit" data-id="${m.id}" class="iconChip" aria-label="Editar">✎</button>
+            <button data-action="delete" data-id="${m.id}" class="iconChip" aria-label="Eliminar">🗑</button>
+          `}
+        </div>
+      </div>
+    </article>`;
+  }
+
+  // Ajusta el alto del textarea al contenido (tope: 600px, definido por CSS max-height)
+  function autoGrow(ta){
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  chatEl.addEventListener('input', (e) => {
+    if(e.target.classList?.contains('msg-edit')){
+      drafts.set(e.target.dataset.id, e.target.value);
+      autoGrow(e.target);
+    }
+  });
+  chatEl.addEventListener('focusin', (e) => {
+    if(e.target.classList?.contains('msg-edit')) lastEditId = e.target.dataset.id;
+  });
+
+  // Devuelve el textarea de edición (y su selección) que debe recibir la transcripción, o null
+  function captureEditTarget(){
+    let id = null;
+    const active = document.activeElement;
+    if(active && active.classList && active.classList.contains('msg-edit')) id = active.dataset.id;
+    else if(lastEditId && editingIds.has(lastEditId)) id = lastEditId;
+    else if(editingIds.size) id = Array.from(editingIds).pop();
+    if(!id) return null;
+    const ta = chatEl.querySelector(`textarea[data-id="${id}"]`);
+    if(!ta) return null;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    return { id, start, end, selected: ta.value.slice(start, end) };
+  }
+
+  // Reemplaza el texto seleccionado (o inserta en el cursor) sin guardar el mensaje
+  function applyTranscriptionToEdit(target, text){
+    if(!editingIds.has(target.id)) return false;
+    const ta = chatEl.querySelector(`textarea[data-id="${target.id}"]`);
+    if(!ta) return false;
+    const current = ta.value;
+    let start = target.start, end = target.end;
+    if(current.slice(start, end) !== target.selected){
+      // el texto cambió mientras se transcribía: usar la selección actual
+      start = ta.selectionStart; end = ta.selectionEnd;
+    }
+    let insert = text;
+    if(start === end){ // inserción pura: cuidar los espacios alrededor
+      if(start > 0 && !/\s/.test(current[start-1])) insert = ' ' + insert;
+      if(end < current.length && !/\s/.test(current[end])) insert += ' ';
+    }
+    ta.value = current.slice(0, start) + insert + current.slice(end);
+    drafts.set(target.id, ta.value);
+    autoGrow(ta);
+    const pos = start + insert.length;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+    return true;
+  }
+  window.addEventListener('resize', () => {
+    chatEl.querySelectorAll('.msg-edit').forEach(autoGrow);
+  });
+
+  // Copia al portapapeles con fallback (execCommand) para contextos sin Clipboard API
+  function fallbackCopy(text){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length); // iOS
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(_) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  async function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch(_) { /* cae al fallback */ }
+    }
+    return fallbackCopy(text);
+  }
+
+  function flashChip(btn){
+    const original = btn.innerHTML;
+    btn.innerHTML = '✓';
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 900);
+  }
+
+  chatEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    const msg = messages.find(m => m.id === id);
+    if(!msg) return;
+
+    if(action === 'copy'){
+      copyText(msg.text).then(ok => {
+        if(ok) flashChip(btn);
+        else alert('No se pudo copiar el texto');
+      });
+    } else if(action === 'top'){
+      const el = chatEl.querySelector(`.msg[data-id="${id}"]`);
+      el?.scrollIntoView({behavior:'smooth', block:'start'});
+    } else if(action === 'delete'){
+      messages = messages.filter(m => m.id !== id);
+      saveMessages();
+      renderMessages();
+    } else if(action === 'edit'){
+      editingIds.add(id);
+      renderMessages();
+      const ta = chatEl.querySelector(`textarea[data-id="${id}"]`);
+      if(ta){ autoGrow(ta); ta.focus(); ta.selectionStart = ta.value.length; }
+    } else if(action === 'save'){
+      const ta = chatEl.querySelector(`textarea[data-id="${id}"]`);
+      const val = ta ? ta.value.trim() : msg.text;
+      msg.text = val || msg.text;
+      editingIds.delete(id);
+      drafts.delete(id);
+      saveMessages();
+      renderMessages();
+    } else if(action === 'cancel'){
+      editingIds.delete(id);
+      drafts.delete(id);
+      renderMessages();
+    }
+  });
+
+  function addMessage(text){
+    const msg = { id: uid(), text, date: new Date().toISOString() };
+    messages.push(msg);
+    saveMessages();
+    renderMessages();
+    requestAnimationFrame(() => { chatEl.scrollTop = chatEl.scrollHeight; });
+  }
+
+  // ---------------- Control slot (mic / notif / api input) ----------------
+  function renderControl(errorMessage){
+    if(!apiKey){ renderApiKeyInput(); return; }
+    if(appState === 'idle'){ renderMicButton(); return; }
+    if(appState === 'recording'){ renderRecordingNotif(); return; }
+    if(appState === 'processing'){ renderWaitingNotif(); return; }
+    if(appState === 'error'){ renderErrorNotif(errorMessage); return; }
+  }
+
+  function renderApiKeyInput(){
+    controlSlot.innerHTML = `
+      <form class="api-form" id="apiKeyForm">
+        <input id="apiKeyInput" type="password" placeholder="Introduce una clave API de groq" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <button type="submit" class="api-save">Guardar</button>
+      </form>`;
+    document.getElementById('apiKeyForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = document.getElementById('apiKeyInput').value.trim();
+      if(!val) return;
+      apiKey = val;
+      localStorage.setItem(API_KEY_STORAGE, apiKey);
+      renderControl();
+    });
+  }
+
+  function renderMicButton(){
+    controlSlot.innerHTML = `<button id="micBtn" class="mic-btn" aria-label="Transcribir">TRANSCRIBIR 🎤</button>`;
+    const btn = document.getElementById('micBtn');
+    btn.addEventListener('pointerdown', onIdlePointerDown);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  function renderRecordingNotif(){
+    const hint = toggleMode ? 'Toca para detener' : (holdConfirmed ? 'Soltá para detener' : '');
+    controlSlot.innerHTML = `
+      <button id="micBtn" class="mic-btn mic-btn--recording" aria-label="Detener grabación">
+        <span class="rec-label">
+          <span class="eq-bars"><span></span><span></span><span></span></span>
+          Grabando <span id="recTimer">0:00</span>
+        </span>
+        ${hint ? `<span class="rec-hint">${hint}</span>` : ''}
+      </button>`;
+    const btn = document.getElementById('micBtn');
+    btn.addEventListener('pointerdown', onRecordingPointerDown);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    startTimerDisplay();
+  }
+
+  function renderWaitingNotif(){
+    controlSlot.innerHTML = `<div class="notif notif--wait"><span class="spinner"></span> Espere, transcribiendo…</div>`;
+  }
+
+  function renderErrorNotif(msg){
+    controlSlot.innerHTML = `<div class="notif notif--error">⚠ ${escapeHtml(msg || 'Ocurrió un error')}</div>`;
+  }
+
+  // ---------------- Timer ----------------
+  function startTimerDisplay(){
+    clearInterval(timerHandle);
+    timerHandle = setInterval(() => {
+      const el = document.getElementById('recTimer');
+      if(el) el.textContent = formatMMSS(Math.floor((Date.now() - recordStartTime) / 1000));
+    }, 250);
+  }
+  function stopTimerDisplay(){ clearInterval(timerHandle); timerHandle = null; }
+
+  // ---------------- Recording flow ----------------
+  function onIdlePointerDown(e){
+    e.preventDefault();
+    if(appState !== 'idle') return;
+    pressStartTime = Date.now();
+    recordTarget = captureEditTarget(); // antes de que el botón le quite el foco al textarea
+    startRecording();
+  }
+
+  function onRecordingPointerDown(e){
+    e.preventDefault();
+    // Only relevant once we're in "toggle mode" (tap already registered as short press)
+    if(appState === 'recording' && toggleMode){
+      finishRecording();
+    }
+  }
+
+  window.addEventListener('pointerup', globalPointerUp, {passive:false});
+  window.addEventListener('pointercancel', globalPointerUp, {passive:false});
+  function globalPointerUp(){
+    if(appState !== 'recording' || toggleMode) return;
+    const elapsed = Date.now() - pressStartTime;
+    if(elapsed < TAP_THRESHOLD){
+      toggleMode = true;
+      renderControl();
+    } else {
+      finishRecording();
+    }
+  }
+
+  function pickSupportedMimeType(){
+    const candidates = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];
+    for(const c of candidates){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return '';
+  }
+
+  // Reuse the same granted mic stream across recordings. Fully stopping the
+  // hardware after every recording is what makes some browsers (notably
+  // Safari) re-prompt for permission on the next attempt.
+  async function getMicStream(){
+    if(currentStream){
+      const tracks = currentStream.getAudioTracks();
+      if(tracks.length && tracks.every(t => t.readyState === 'live')){
+        return currentStream;
+      }
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    currentStream = stream;
+    stream.getAudioTracks().forEach(track => {
+      track.addEventListener('ended', () => {
+        if(currentStream === stream) currentStream = null;
+      });
+    });
+    return stream;
+  }
+
+  async function startRecording(){
+    try{
+      const stream = await getMicStream();
+      const mimeType = pickSupportedMimeType();
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.addEventListener('dataavailable', (e) => {
+        if(e.data && e.data.size > 0) audioChunks.push(e.data);
+      });
+      mediaRecorder.addEventListener('stop', () => {
+        processAndSend();
+      });
+      mediaRecorder.start();
+      recordStartTime = Date.now();
+      appState = 'recording';
+      toggleMode = false;
+      holdConfirmed = false;
+      renderControl();
+
+      clearTimeout(holdConfirmHandle);
+      holdConfirmHandle = setTimeout(() => {
+        if(appState === 'recording' && !toggleMode){
+          holdConfirmed = true;
+          renderControl();
+        }
+      }, TAP_THRESHOLD);
+    } catch(err){
+      showError('No se pudo acceder al micrófono');
+    }
+  }
+
+  function finishRecording(){
+    stopTimerDisplay();
+    clearTimeout(holdConfirmHandle);
+    if(mediaRecorder && mediaRecorder.state !== 'inactive'){
+      mediaRecorder.stop();
+    } else {
+      processAndSend();
+    }
+  }
+
+  function extForMime(mime){
+    if(!mime) return 'webm';
+    if(mime.includes('webm')) return 'webm';
+    if(mime.includes('ogg')) return 'ogg';
+    if(mime.includes('mp4')) return 'm4a';
+    if(mime.includes('wav')) return 'wav';
+    return 'webm';
+  }
+
+  function processAndSend(){
+    appState = 'processing';
+    renderControl();
+    const mimeType = mediaRecorder?.mimeType || 'audio/webm';
+    const blob = new Blob(audioChunks, { type: mimeType });
+
+    if(blob.size < 800){
+      showError('No se detectó audio');
+      return;
+    }
+
+    sendToGroq(blob, mimeType)
+      .then((text) => {
+        if(!text){
+          showError('No se detectó voz en el audio');
+          return;
+        }
+        const target = recordTarget;
+        recordTarget = null;
+        if(!(target && applyTranscriptionToEdit(target, text))){
+          addMessage(text);
+        }
+        appState = 'idle';
+        toggleMode = false;
+        renderControl();
+      })
+      .catch((err) => {
+        showError(err.message || 'Error al transcribir');
+      });
+  }
+
+  async function sendToGroq(blob, mimeType){
+    if(!apiKey) throw new Error('Falta la clave API');
+    const formData = new FormData();
+    const ext = extForMime(mimeType);
+    formData.append('file', blob, `audio.${ext}`);
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('temperature', '0');
+    formData.append('response_format', 'verbose_json');
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: formData
+    });
+
+    if(!res.ok){
+      let msg = `Error ${res.status}`;
+      if(res.status === 401) msg = 'Clave API inválida';
+      try{
+        const errJson = await res.json();
+        if(errJson?.error?.message) msg = errJson.error.message;
+      } catch(_){}
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    return (data.text || '').trim();
+  }
+
+  function showError(message){
+    appState = 'error';
+    renderControl(message);
+    setTimeout(() => {
+      if(appState === 'error'){
+        appState = 'idle';
+        toggleMode = false;
+        renderControl();
+      }
+    }, 3500);
+  }
+
+  // ---------------- Settings modal ----------------
+  gearBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+  closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+  settingsModal.addEventListener('click', (e) => {
+    if(e.target === settingsModal) settingsModal.classList.add('hidden');
+  });
+  clearApiKeyBtn.addEventListener('click', () => {
+    if(confirm('¿Eliminar la clave API guardada? Vas a tener que ingresarla de nuevo.')){
+      localStorage.removeItem(API_KEY_STORAGE);
+      apiKey = null;
+      appState = 'idle';
+      settingsModal.classList.add('hidden');
+      renderControl();
+    }
+  });
+  clearMessagesBtn.addEventListener('click', () => {
+    if(confirm('¿Eliminar todos los mensajes transcritos? Esta acción no se puede deshacer.')){
+      messages = [];
+      editingIds.clear();
+      drafts.clear();
+      saveMessages();
+      renderMessages();
+      settingsModal.classList.add('hidden');
+    }
+  });
+
+  // ---------------- Init ----------------
+  function scrollToBottomInstant(){ chatEl.scrollTop = chatEl.scrollHeight; }
+
+  renderMessages();
+  renderControl();
+  scrollToBottomInstant();
+  requestAnimationFrame(() => {
+    scrollToBottomInstant();
+    requestAnimationFrame(scrollToBottomInstant);
+  });
+  window.addEventListener('load', scrollToBottomInstant);
+})();
+</script>
+</body>
+</html>
