@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0f" />
+<title>Ghostly</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-elev: #15151d;
+    --bg-tile: #1c1c26;
+    --text: #e8e8f0;
+    --text-dim: #8a8a9a;
+    --accent: #7c5cff;
+    --accent-soft: rgba(124, 92, 255, 0.25);
+    --danger: #ff5577;
+    --success: #4ade80;
+    --border: rgba(255, 255, 255, 0.06);
+    --speaking: #7c5cff;
+    --radius: 14px;
+    --tap-size: 52px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+
+  /* ---------- Pantalla de entrada ---------- */
+  #lobby {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at top, #1a1a2e 0%, var(--bg) 70%);
+    z-index: 100;
+  }
+  #lobby h1 {
+    font-size: 2.2rem; font-weight: 700;
+    letter-spacing: -0.02em; margin-bottom: 8px;
+    background: linear-gradient(135deg, #e8e8f0 0%, #7c5cff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  #lobby p { color: var(--text-dim); margin-bottom: 32px; font-size: 0.95rem; }
+  .form-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px; width: 100%; max-width: 380px;
+  }
+  .form-card label {
+    display: block; font-size: 0.8rem; color: var(--text-dim);
+    margin-bottom: 6px; margin-top: 14px;
+  }
+  .form-card input {
+    width: 100%; padding: 12px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 1rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .form-card input:focus { border-color: var(--accent); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 14px 22px; border-radius: 12px; border: none;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: transform 0.15s, opacity 0.2s;
+    font-family: inherit;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent); color: white; width: 100%;
+    margin-top: 22px;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent; color: var(--accent); border: 1px solid var(--accent);
+    width: 100%; margin-top: 10px;
+  }
+  #lobby-error {
+    color: var(--danger); font-size: 0.85rem;
+    margin-top: 10px; min-height: 1.2em; text-align: center;
+  }
+
+  /* ---------- App principal ---------- */
+  #app { display: none; height: 100%; flex-direction: column; }
+  #app.active { display: flex; }
+
+  /* Barra superior */
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: calc(10px + var(--safe-top)) 14px 10px;
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem; z-index: 10;
+  }
+  .conn-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--success); flex-shrink: 0;
+    animation: pulse 2s infinite;
+  }
+  .conn-dot.warn { background: #fbbf24; }
+  .conn-dot.err { background: var(--danger); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .topbar .timer { font-variant-numeric: tabular-nums; color: var(--text-dim); }
+  .topbar .room-name {
+    flex: 1; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: 0.05em;
+  }
+  .icon-btn {
+    width: var(--tap-size); height: var(--tap-size);
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--text);
+    border-radius: 50%; cursor: pointer;
+    transition: background 0.15s;
+    font-size: 1.3rem;
+  }
+  .icon-btn:hover, .icon-btn:active { background: rgba(255, 255, 255, 0.08); }
+  .icon-btn .badge {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--accent); color: white;
+    font-size: 0.65rem; font-weight: 700;
+    min-width: 18px; height: 18px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+  }
+  .icon-btn-wrap { position: relative; }
+
+  /* Stage de tiles */
+  .stage {
+    flex: 1; padding: 10px;
+    display: grid; gap: 8px;
+    overflow: hidden;
+  }
+  .stage[data-count="0"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .stage[data-count="1"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .stage[data-count="2"] { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .stage[data-count="3"], .stage[data-count="4"] {
+    grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+  }
+
+  .tile {
+    position: relative;
+    background: var(--bg-tile);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease, transform 0.25s ease, opacity 0.3s ease;
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+  .tile.speaking {
+    border-color: var(--speaking);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .tile.audio-only {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tile video {
+    width: 100%; height: 100%; object-fit: cover;
+    background: #000; display: block;
+  }
+  .tile .placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; color: var(--text-dim);
+    background: linear-gradient(135deg, #1c1c26, #141420);
+  }
+  .tile .name-tag {
+    position: absolute; bottom: 8px; left: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    padding: 4px 10px; border-radius: 8px;
+    font-size: 0.78rem; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+    max-width: calc(100% - 16px);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tile .mic-ind {
+    width: 12px; height: 12px;
+    display: inline-block;
+  }
+  .tile .mic-off { color: var(--danger); }
+  .tile .reconnecting {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    font-size: 0.85rem; color: var(--text-dim);
+    gap: 8px;
+  }
+  .tile .reconnecting .spinner {
+    width: 24px; height: 24px; border: 2px solid var(--text-dim);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Ondas de audio (solo-audio) */
+  .wave {
+    display: flex; align-items: center; gap: 3px;
+    height: 48px;
+  }
+  .wave span {
+    display: block; width: 4px; background: var(--accent);
+    border-radius: 2px;
+    transition: height 0.1s ease;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1; grid-row: 1 / -1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--text-dim); gap: 10px;
+  }
+  .empty-state .icon { font-size: 3rem; opacity: 0.3; }
+
+  /* Audio-only strip (overflow) */
+  .audio-strip {
+    padding: 8px 10px; display: flex; gap: 8px;
+    overflow-x: auto; flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .audio-strip::-webkit-scrollbar { display: none; }
+  .audio-strip:empty { display: none; }
+  .audio-chip {
+    flex-shrink: 0;
+    background: var(--bg-elev); border: 1px solid var(--border);
+    padding: 8px 12px; border-radius: 12px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.8rem;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .audio-chip.speaking {
+    border-color: var(--speaking);
+    background: rgba(124, 92, 255, 0.12);
+  }
+  .audio-chip .mini-wave {
+    display: flex; align-items: center; gap: 2px; height: 14px;
+  }
+  .audio-chip .mini-wave span {
+    display: block; width: 2px; background: var(--accent);
+    border-radius: 1px; transition: height 0.08s;
+  }
+
+  /* Barra de controles */
+  .controls {
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 14px calc(14px + var(--safe-bottom));
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    gap: 10px;
+  }
+  .ctrl-btn {
+    width: var(--tap-size); height: var(--tap-size);
+    border-radius: 50%; border: none;
+    background: var(--bg-elev); color: var(--text);
+    cursor: pointer; font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, background 0.2s, color 0.2s;
+    position: relative;
+    border: 1px solid var(--border);
+  }
+  .ctrl-btn:active { transform: scale(0.93); }
+  .ctrl-btn.muted { background: rgba(255, 85, 119, 0.18); color: var(--danger); border-color: var(--danger); }
+  .ctrl-btn.hangup {
+    background: var(--danger); color: white;
+    width: 60px; height: 60px; font-size: 1.5rem;
+    border: none;
+  }
+  .ctrl-btn.hangup:active { background: #ff2255; }
+  .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Panel de participantes (drawer) */
+  .drawer {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 50; display: none;
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .drawer.open { display: block; opacity: 1; }
+  .drawer-content {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: min(320px, 85vw);
+    background: var(--bg-elev);
+    padding: calc(20px + var(--safe-top)) 16px calc(20px + var(--safe-bottom));
+    overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.3s;
+    border-left: 1px solid var(--border);
+  }
+  .drawer.open .drawer-content { transform: translateX(0); }
+  .drawer h2 { font-size: 1.05rem; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .participant {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; border-radius: 10px;
+    background: var(--bg-tile); margin-bottom: 6px;
+    font-size: 0.9rem;
+  }
+  .participant .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 0.95rem;
+  }
+  .participant .pname { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .participant .pstate { font-size: 1rem; }
+  .participant.speaking-now { outline: 2px solid var(--accent); }
+
+  /* Toasts */
+  .toasts {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    z-index: 200; display: flex; flex-direction: column;
+    gap: 8px; align-items: center; pointer-events: none;
+  }
+  .toast {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    padding: 10px 16px; border-radius: 10px;
+    font-size: 0.85rem; opacity: 0; transform: translateY(-10px);
+    transition: opacity 0.3s, transform 0.3s;
+    max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.err { border-color: var(--danger); color: var(--danger); }
+
+  @media (min-width: 640px) {
+    .topbar, .controls { padding-left: 20px; padding-right: 20px; }
+    .stage { padding: 16px; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Pantalla de entrada ===== -->
+<div id="lobby">
+  <h1>Ghostly</h1>
+  <p>Videollamadas centradas en la voz</p>
+  <div class="form-card">
+    <label for="name-input">Tu nombre</label>
+    <input id="name-input" type="text" placeholder="Ej: Ana" maxlength="30" />
+
+    <label for="room-input">Código de sala (opcional)</label>
+    <input id="room-input" type="text" placeholder="Dejar vacío para crear una nueva" maxlength="12" style="text-transform: uppercase;" />
+
+    <label for="pwd-input">Contraseña de sala (opcional)</label>
+    <input id="pwd-input" type="password" placeholder="Solo si la sala la requiere" />
+
+    <button id="join-btn" class="btn btn-primary">Entrar</button>
+    <div id="lobby-error"></div>
+  </div>
+</div>
+
+<!-- ===== App ===== -->
+<div id="app">
+  <div class="topbar">
+    <span class="conn-dot" id="conn-dot" title="Conectado"></span>
+    <span class="timer" id="timer">00:00</span>
+    <span class="room-name" id="room-name">Sala</span>
+    <div class="icon-btn-wrap">
+      <button class="icon-btn" id="participants-btn" aria-label="Participantes">👥</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage" data-count="0">
+    <div class="empty-state">
+      <div class="icon">👻</div>
+      <div>Esperando participantes…</div>
+      <div style="font-size:0.75rem;opacity:0.7;" id="share-code"></div>
+    </div>
+  </div>
+
+  <div class="audio-strip" id="audio-strip"></div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="mic-btn" aria-label="Micrófono">🎙️</button>
+    <button class="ctrl-btn" id="cam-btn" aria-label="Cámara">📹</button>
+    <button class="ctrl-btn" id="flip-btn" aria-label="Cambiar cámara">🔄</button>
+    <button class="ctrl-btn hangup" id="hangup-btn" aria-label="Colgar">☎</button>
+  </div>
+</div>
+
+<!-- Drawer participantes -->
+<div class="drawer" id="drawer">
+  <div class="drawer-content">
+    <h2>
+      Participantes
+      <button class="icon-btn" id="close-drawer" style="width:36px;height:36px;font-size:1.1rem;">✕</button>
+    </h2>
+    <div id="participants-list"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- Librerías externas -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hark@1.2.3/hark.bundle.js"></script>
+
+<script>
+(() => {
+  'use strict';
+
+  // ============================================================
+  //  CONSTANTES
+  // ============================================================
+  const MAX_TILES = 4;
+  const SPEAKING_THRESHOLD_MS = 800;    // cuánto dura el estado "hablando" tras último pico
+  const RECONNECT_TIMEOUT_MS = 15000; // tiempo antes de liberar slot de peer desconectado
+  const VAD_INTERVAL = 120;            // muestreo de volumen
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ];
+
+  // ============================================================
+  //  UTILIDADES DOM / VARIOS
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+  const escapeHTML = (s) => String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+
+  function toast(msg, isError = false, duration = 2600) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' err' : '');
+    t.textContent = msg;
+    $('toasts').appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => {
+      t.classList.remove('show');
+      setTimeout(() => t.remove(), 300);
+    }, duration);
+  }
+
+  function initial(name) {
+    return (name || '?').trim().charAt(0).toUpperCase();
+  }
+
+  // ============================================================
+  //  ESTADO GLOBAL
+  // ============================================================
+  const state = {
+    socket: null,
+    localId: null,
+    localName: '',
+    roomId: null,
+    localStream: null,
+    audioStream: null, // stream sin video si el usuario apaga cámara
+    micEnabled: true,
+    camEnabled: true,
+    facingMode: 'user',
+    peers: new Map(),          // id -> { peer (simple-peer), name, stream, muted, speaking, lastSpoke, connected, tileSlot, hark, audioCtx }
+    slots: [null, null, null, null], // array de ids de peers ocupando tiles de video
+    callStart: 0,
+    timerInterval: null,
+    // Stats para ajustar calidad
+    statsInterval: null,
+    currentFpsTarget: 24,
+    currentBitrate: 500000
+  };
+
+  // ============================================================
+  //  GESTOR DE TILES (prioridad por VAD)
+  // ============================================================
+  const TileManager = {
+    // Devuelve el índice del slot donde está un peer (o -1)
+    slotOf(peerId) {
+      return state.slots.indexOf(peerId);
+    },
+
+    // Añade al peer a un slot. Si no hay slot libre, echa al que lleva más tiempo sin hablar.
+    // Devuelve true si el peer entró a un slot de video.
+    add(peerId) {
+      if (this.slotOf(peerId) !== -1) return true;
+      const freeIdx = state.slots.indexOf(null);
+      if (freeIdx !== -1) {
+        state.slots[freeIdx] = peerId;
+        return true;
+      }
+      // Sin slots libres: buscar el "menos activo" (sin protección de speaking)
+      let candidateIdx = -1, oldestLastSpoke = Infinity;
+      for (let i = 0; i < state.slots.length; i++) {
+        const pid = state.slots[i];
+        if (!pid) continue;
+        const p = state.peers.get(pid);
+        if (!p) continue;
+        if (p.speaking) continue; // protección: no expulsar hablante activo
+        if (p.lastSpoke < oldestLastSpoke) {
+          oldestLastSpoke = p.lastSpoke;
+          candidateIdx = i;
+        }
+      }
+      if (candidateIdx === -1) return false; // todos los slots ocupados por hablantes activos
+      state.slots[candidateIdx] = peerId;
+      return true;
+    },
+
+    remove(peerId) {
+      const idx = this.slotOf(peerId);
+      if (idx !== -1) state.slots[idx] = null;
+    },
+
+    // Llamado cuando un peer empieza a hablar: sube su prioridad
+    onSpeaking(peerId) {
+      if (this.slotOf(peerId) !== -1) return; // ya está en slot
+      this.add(peerId);
+    },
+
+    // Renderiza los tiles según el estado actual
+    render() {
+      const stage = $('stage');
+      const activeIds = state.slots.filter(id => id && state.peers.has(id));
+
+      // Si no hay nadie, mostrar empty state
+      stage.innerHTML = '';
+      if (activeIds.length === 0 && state.peers.size === 0) {
+        stage.dataset.count = '0';
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.innerHTML = `
+          <div class="icon">👻</div>
+          <div>Esperando participantes…</div>
+          <div style="font-size:0.75rem;opacity:0.7;">Código: <strong>${escapeHTML(state.roomId || '')}</strong></div>
+        `;
+        stage.appendChild(empty);
+      } else {
+        stage.dataset.count = String(Math.min(activeIds.length || 1, MAX_TILES));
+        for (const pid of activeIds) {
+          const p = state.peers.get(pid);
+          stage.appendChild(this.buildTile(pid, p));
+        }
+      }
+
+      // Audio strip para peers sin slot de video
+      this.renderAudioStrip();
+    },
+
+    buildTile(peerId, peer) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.peerId = peerId;
+      if (peer.speaking) tile.classList.add('speaking');
+      if (!peer.connected) tile.classList.add('reconnecting-state');
+
+      // Video o placeholder
+      if (peer.stream && peer.stream.getVideoTracks().length && peer.camEnabled !== false) {
+        const v = document.createElement('video');
+        v.autoplay = true; v.playsInline = true; v.muted = false;
+        v.srcObject = peer.stream;
+        tile.appendChild(v);
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'placeholder';
+        ph.textContent = initial(peer.name);
+        tile.appendChild(ph);
+      }
+
+      // Indicador de reconexión
+      if (!peer.connected) {
+        const rec = document.createElement('div');
+        rec.className = 'reconnecting';
+        rec.innerHTML = '<div class="spinner"></div><div>Reconectando…</div>';
+        tile.appendChild(rec);
+      }
+
+      // Nombre + indicador de micro
+      const tag = document.createElement('div');
+      tag.className = 'name-tag';
+      const micIcon = peer.muted
+        ? '<span class="mic-ind mic-off">🔇</span>'
+        : '<span class="mic-ind">🎙️</span>';
+      tag.innerHTML = `${micIcon}<span>${escapeHTML(peer.name)}</span>`;
+      tile.appendChild(tag);
+
+      return tile;
+    },
+
+    renderAudioStrip() {
+      const strip = $('audio-strip');
+      strip.innerHTML = '';
+      const inSlots = new Set(state.slots.filter(Boolean));
+      for (const [pid, p] of state.peers) {
+        if (inSlots.has(pid)) continue;
+        const chip = document.createElement('div');
+        chip.className = 'audio-chip';
+        if (p.speaking) chip.classList.add('speaking');
+        const waveHtml = Array.from({length: 5}, (_, i) =>
+          `<span data-wi="${i}" style="height:3px;"></span>`).join('');
+        chip.innerHTML = `
+          <span>${initial(p.name)}</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${escapeHTML(p.name)}</span>
+          <div class="mini-wave">${waveHtml}</div>
+        `;
+        strip.appendChild(chip);
+      }
+    }
+  };
+
+  // ============================================================
+  //  MONITOR DE AUDIO (VAD + niveles por peer)
+  // ============================================================
+  const AudioMonitor = {
+    attach(peerId, stream) {
+      const peer = state.peers.get(peerId);
+      if (!peer) return;
+      try {
+        // Hark sobre stream remoto (no reproducir el audio aún, lo hará el <video>)
+        // hark necesita un audioContext; usamos el mismo para todos
+        if (!this.ctx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new Ctx();
+        }
+        const speech = hark(stream, { interval: VAD_INTERVAL, threshold: -55, audioContext: this.ctx });
+        speech.on('speaking', () => {
+          const p = state.peers.get(peerId);
+          if (!p) return;
+          p.speaking = true;
+          p.lastSpoke = Date.now();
+          TileManager.onSpeaking(peerId);
+          TileManager.render();
+          this.renderParticipantsList();
+        });
+        speech.on('stopped_speaking', () => {
+          const p = state.peers.get(peerId);
+          if (!p) return;
+          p.speaking = false;
+          TileManager.render();
+          this.renderParticipantsList();
+        });
+        speech.on('volume_change', (vol) => {
+          const p = state.peers.get(peerId);
+          if (!p) return;
+          p.volume = vol; // -100..0
+          if (vol > -45) p.lastSpoke = Date.now();
+          this.updateWaveforms(peerId, vol);
+        });
+        peer.hark = speech;
+      } catch (e) {
+        console.warn('No se pudo iniciar VAD para', peerId, e);
+      }
+    },
+
+    detach(peerId) {
+      const p = state.peers.get(peerId);
+      if (p && p.hark) { try { p.hark.stop(); } catch(e){} }
+    },
+
+    updateWaveforms(peerId, vol) {
+      // vol: -100 (silencio) .. 0 (máx)
+      const inSlot = TileManager.slotOf(peerId) !== -1;
+      const norm = Math.max(0, Math.min(1, (vol + 60) / 60)); // 0..1 aproximado
+      if (inSlot) {
+        // Tile principal: no pintamos onda, solo borde "speaking" ya gestionado.
+      } else {
+        // Chip de audio strip
+        const chip = $('audio-strip').querySelector(`[data-peer-id="${peerId}"]`);
+        if (!chip) return;
+        const bars = chip.querySelectorAll('[data-wi]');
+        bars.forEach((bar, i) => {
+          const h = 3 + Math.random() * 11 * norm;
+          bar.style.height = h + 'px';
+        });
+      }
+    },
+
+    // Monitor del micrófono local (solo nivel, no VAD completo para ahorrar CPU)
+    attachLocal(stream) {
+      try {
+        if (!this.ctx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new Ctx();
+        }
+        const speech = hark(stream, { interval: VAD_INTERVAL, threshold: -55, audioContext: this.ctx });
+        speech.on('volume_change', (vol) => { state.localVolume = vol; });
+        this.localHark = speech;
+      } catch(e) {}
+    },
+
+    detachLocal() {
+      if (this.localHark) { try { this.localHark.stop(); } catch(e){} this.localHark = null; }
+    },
+
+    renderParticipantsList() {
+      const list = $('participants-list');
+      list.innerHTML = '';
+      const all = [];
+      all.push({ id: state.localId, name: state.localName + ' (tú)', muted: !state.micEnabled, speaking: state.localVolume > -45, cam: state.camEnabled });
+      for (const [id, p] of state.peers) {
+        all.push({ id, name: p.name, muted: p.muted, speaking: p.speaking, cam: p.camEnabled !== false });
+      }
+      for (const u of all) {
+        const el = document.createElement('div');
+        el.className = 'participant' + (u.speaking ? ' speaking-now' : '');
+        el.innerHTML = `
+          <div class="avatar">${initial(u.name)}</div>
+          <div class="pname">${escapeHTML(u.name)}</div>
+          <div class="pstate">${u.muted ? '🔇' : '🎙️'} ${u.cam !== false ? '📹' : '🚫'}</div>
+        `;
+        list.appendChild(el);
+      }
+    }
+  };
+
+  // ============================================================
+  //  GESTIÓN DE PEERS (simple-peer)
+  // ============================================================
+  const PeerManager = {
+    async initLocalStream() {
+      const constraints = {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: {
+          facingMode: state.facingMode,
+          width: { ideal: 640 },
+          height: { ideal: 360 },
+          frameRate: { ideal: 24, max: 30 }
+        }
+      };
+      try {
+        state.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        console.warn('No se pudo obtener cámara, solo audio', e);
+        state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        state.camEnabled = false;
+      }
+      AudioMonitor.attachLocal(state.localStream);
+      return state.localStream;
+    },
+
+    createPeer(peerId, initiator) {
+      const peer = new SimplePeer({
+        initiator,
+        trickle: true,
+        stream: state.localStream,
+        config: { iceServers: ICE_SERVERS },
+        sdpTransform: (sdp) => sdp // podríamos modificar SDP aquí para priorizar audio
+      });
+
+      const entry = {
+        id: peerId,
+        name: 'Usuario',
+        peer,
+        stream: null,
+        muted: false,
+        speaking: false,
+        lastSpoke: 0,
+        volume: -100,
+        connected: false,
+        camEnabled: true,
+        reconnectTimer: null
+      };
+      state.peers.set(peerId, entry);
+
+      peer.on('signal', (data) => {
+        state.socket.emit('signal', { to: peerId, data });
+      });
+
+      peer.on('stream', (stream) => {
+        entry.stream = stream;
+        entry.connected = true;
+        AudioMonitor.attach(peerId, stream);
+        // Intentar meterlo en un slot
+        TileManager.add(peerId);
+        TileManager.render();
+        AudioMonitor.renderParticipantsList();
+        toast(`${entry.name} se ha unido`);
+      });
+
+      peer.on('data', (raw) => {
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'metadata') {
+            entry.name = msg.name || entry.name;
+            entry.muted = !!msg.muted;
+            entry.camEnabled = msg.camEnabled !== false;
+            TileManager.render();
+            AudioMonitor.renderParticipantsList();
+          } else if (msg.type === 'mic') {
+            entry.muted = !!msg.muted;
+            TileManager.render();
+            AudioMonitor.renderParticipantsList();
+          } else if (msg.type === 'cam') {
+            entry.camEnabled = !!msg.camEnabled;
+            TileManager.render();
+          }
+        } catch (e) {}
+      });
+
+      peer.on('connect', () => {
+        entry.connected = true;
+        // Enviar metadata inicial
+        this.sendMetadataTo(peerId);
+      });
+
+      peer.on('close', () => {
+        this.onPeerDisconnected(peerId);
+      });
+
+      peer.on('error', (err) => {
+        console.warn('Error peer', peerId, err);
+        if (err.code === 'ERR_WEBRTC_SUPPORT') {
+          toast('WebRTC no soportado en este navegador', true);
+        }
+        // Intentar reiniciar ICE
+        if (entry.peer && !entry.peer.destroyed) {
+          try { entry.peer.destroy(); } catch(e){}
+        }
+        this.scheduleReconnect(peerId);
+      });
+
+      return entry;
+    },
+
+    scheduleReconnect(peerId) {
+      const entry = state.peers.get(peerId);
+      if (!entry) return;
+      entry.connected = false;
+      TileManager.render();
+      clearTimeout(entry.reconnectTimer);
+      entry.reconnectTimer = setTimeout(() => {
+        // Si tras el timeout sigue sin reconectar, liberar slot
+        const e = state.peers.get(peerId);
+        if (e && !e.connected) {
+          this.removePeer(peerId);
+          toast(`${e.name} ha abandonado la llamada`);
+        }
+      }, RECONNECT_TIMEOUT_MS);
+    },
+
+    onPeerDisconnected(peerId) {
+      const entry = state.peers.get(peerId);
+      if (!entry) return;
+      entry.connected = false;
+      TileManager.render();
+      clearTimeout(entry.reconnectTimer);
+      entry.reconnectTimer = setTimeout(() => {
+        const e = state.peers.get(peerId);
+        if (e && !e.connected) {
+          this.removePeer(peerId);
+          toast(`${e.name} ha abandonado la llamada`);
+        }
+      }, RECONNECT_TIMEOUT_MS);
+    },
+
+    removePeer(peerId) {
+      const entry = state.peers.get(peerId);
+      if (!entry) return;
+      AudioMonitor.detach(peerId);
+      TileManager.remove(peerId);
+      clearTimeout(entry.reconnectTimer);
+      if (entry.peer && !entry.peer.destroyed) {
+        try { entry.peer.destroy(); } catch(e){}
+      }
+      state.peers.delete(peerId);
+      TileManager.render();
+      AudioMonitor.renderParticipantsList();
+    },
+
+    sendMetadataTo(peerId) {
+      const entry = state.peers.get(peerId);
+      if (!entry || !entry.peer || !entry.peer.connected) return;
+      try {
+        entry.peer.send(JSON.stringify({
+          type: 'metadata',
+          name: state.localName,
+          muted: !state.micEnabled,
+          camEnabled: state.camEnabled
+        }));
+      } catch(e){}
+    },
+
+    broadcastMetadata() {
+      for (const [pid] of state.peers) this.sendMetadataTo(pid);
+    },
+
+    broadcastSignal(type, value) {
+      const payload = JSON.stringify({ type, [type]: value });
+      for (const [, e] of state.peers) {
+        if (e.peer && e.peer.connected) {
+          try { e.peer.send(payload); } catch(err){}
+        }
+      }
+    }
+  };
+
+  // ============================================================
+  //  SEÑALIZACIÓN (socket.io)
+  // ============================================================
+  async function connectSignaling(roomId, password, name) {
+    const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+    state.socket = socket;
+
+    socket.on('connect', () => {
+      $('conn-dot').classList.remove('err', 'warn');
+    });
+    socket.on('disconnect', () => {
+      $('conn-dot').classList.add('warn');
+    });
+    socket.on('connect_error', () => {
+      $('conn-dot').classList.add('err');
+    });
+
+    socket.on('peer-joined', async ({ id, name: pName }) => {
+      if (state.peers.has(id)) return;
+      const entry = PeerManager.createPeer(id, true); // somos el initiator
+      entry.name = pName;
+      AudioMonitor.renderParticipantsList();
+    });
+
+    socket.on('peer-left', ({ id }) => {
+      PeerManager.removePeer(id);
+    });
+
+    socket.on('peer-metadata', ({ id, ...meta }) => {
+      const e = state.peers.get(id);
+      if (!e) return;
+      if (meta.name) e.name = meta.name;
+      if ('muted' in meta) e.muted = meta.muted;
+      if ('camEnabled' in meta) e.camEnabled = meta.camEnabled;
+      TileManager.render();
+      AudioMonitor.renderParticipantsList();
+    });
+
+    socket.on('signal', ({ from, data }) => {
+      let entry = state.peers.get(from);
+      if (!entry) {
+        // El peer remoto es el initiator; creamos nuestro peer no-initiator
+        entry = PeerManager.createPeer(from, false);
+      }
+      try {
+        entry.peer.signal(data);
+      } catch (e) {
+        console.warn('signal error', from, e);
+      }
+    });
+
+    // Unirse a la sala
+    return new Promise((resolve, reject) => {
+      socket.emit('join-room', { roomId, password, name }, (res) => {
+        if (!res || !res.ok) {
+          reject(new Error((res && res.error) || 'No se pudo entrar a la sala'));
+          return;
+        }
+        state.localId = res.id;
+        state.roomId = res.roomId;
+        state.localName = res.name;
+        // Para cada peer ya presente en la sala, creamos un peer NO-initiator (ellos iniciaron)
+        for (const p of res.peers) {
+          const entry = PeerManager.createPeer(p.id, false);
+          entry.name = p.name;
+        }
+        AudioMonitor.renderParticipantsList();
+        resolve(res);
+      });
+    });
+  }
+
+  // ============================================================
+  //  CONTROLES DE USUARIO
+  // ============================================================
+  function applyLocalTrackStates() {
+    if (!state.localStream) return;
+    state.localStream.getAudioTracks().forEach(t => t.enabled = state.micEnabled);
+    state.localStream.getVideoTracks().forEach(t => t.enabled = state.camEnabled);
+  }
+
+  $('mic-btn').addEventListener('click', async () => {
+    state.micEnabled = !state.micEnabled;
+    applyLocalTrackStates();
+    $('mic-btn').classList.toggle('muted', !state.micEnabled);
+    $('mic-btn').textContent = state.micEnabled ? '🎙️' : '🔇';
+    PeerManager.broadcastSignal('mic', state.micEnabled);
+  });
+
+  $('cam-btn').addEventListener('click', async () => {
+    // Si no hay cámara disponible (sólo audio), avisar
+    if (!state.localStream.getVideoTracks().length && !state.camEnabled) {
+      try {
+        const vStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: state.facingMode, width: {ideal: 640}, height: {ideal: 360} }
+        });
+        const vTrack = vStream.getVideoTracks()[0];
+        state.localStream.addTrack(vTrack);
+        state.camEnabled = true;
+        // Renegociar: reemplazar stream en todos los peers
+        for (const [, e] of state.peers) {
+          try {
+            if (e.peer && !e.peer.destroyed) {
+              // simple-peer: addTrack con stream
+              e.peer.addTrack(vTrack, state.localStream);
+            }
+          } catch(err){}
+        }
+      } catch (e) {
+        toast('No se pudo acceder a la cámara', true);
+        return;
+      }
+    } else {
+      state.camEnabled = !state.camEnabled;
+      applyLocalTrackStates();
+      if (!state.camEnabled) {
+        // Quitar pistas de video y dejar de usarlas
+        state.localStream.getVideoTracks().forEach(t => {
+          t.stop();
+          state.localStream.removeTrack(t);
+          for (const [, e] of state.peers) {
+            try { e.peer && !e.peer.destroyed && e.peer.removeTrack(t, state.localStream); } catch(err){}
+          }
+        });
+      } else {
+        // Re-añadir video track
+        try {
+          const vStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: state.facingMode, width:{ideal:640}, height:{ideal:360} }
+          });
+          const vt = vStream.getVideoTracks()[0];
+          state.localStream.addTrack(vt);
+          for (const [, e] of state.peers) {
+            try { e.peer && !e.peer.destroyed && e.peer.addTrack(vt, state.localStream); } catch(err){}
+          }
+        } catch(e) { toast('No se pudo reactivar la cámara', true); state.camEnabled = false; }
+      }
+    }
+    $('cam-btn').classList.toggle('muted', !state.camEnabled);
+    $('cam-btn').textContent = state.camEnabled ? '📹' : '🚫';
+    PeerManager.broadcastSignal('cam', state.camEnabled);
+    TileManager.render();
+  });
+
+  $('flip-btn').addEventListener('click', async () => {
+    if (!state.camEnabled) return;
+    state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: state.facingMode, width:{ideal:640}, height:{ideal:360} },
+        audio: true
+      });
+      // Reemplazar pistas en localStream y en todos los peers
+      const oldTracks = state.localStream.getTracks();
+      oldTracks.forEach(t => {
+        state.localStream.removeTrack(t);
+        for (const [, e] of state.peers) {
+          try { e.peer && !e.peer.destroyed && e.peer.removeTrack(t, state.localStream); } catch(err){}
+        }
+        t.stop();
+      });
+      newStream.getTracks().forEach(t => {
+        state.localStream.addTrack(t);
+        for (const [, e] of state.peers) {
+          try { e.peer && !e.peer.destroyed && e.peer.addTrack(t, state.localStream); } catch(err){}
+        }
+      });
+      AudioMonitor.detachLocal();
+      AudioMonitor.attachLocal(state.localStream);
+      applyLocalTrackStates();
+      toast(state.facingMode === 'user' ? 'Cámara frontal' : 'Cámara trasera');
+    } catch (e) {
+      toast('No se pudo cambiar de cámara', true);
+    }
+  });
+
+  $('hangup-btn').addEventListener('click', () => {
+    leaveCall();
+  });
+
+  // Drawer participantes
+  $('participants-btn').addEventListener('click', () => {
+    AudioMonitor.renderParticipantsList();
+    $('drawer').classList.add('open');
+  });
+  $('close-drawer').addEventListener('click', () => {
+    $('drawer').classList.remove('open');
+  });
+  $('drawer').addEventListener('click', (e) => {
+    if (e.target.id === 'drawer') $('drawer').classList.remove('open');
+  });
+
+  // ============================================================
+  //  CICLO DE VIDA
+  // ============================================================
+  function startTimer() {
+    state.callStart = Date.now();
+    state.timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - state.callStart) / 1000);
+      const mm = String(Math.floor(s / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      $('timer').textContent = `${mm}:${ss}`;
+    }, 1000);
+  }
+
+  function leaveCall() {
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    for (const [id] of state.peers) PeerManager.removePeer(id);
+    if (state.localStream) {
+      state.localStream.getTracks().forEach(t => t.stop());
+      state.localStream = null;
+    }
+    AudioMonitor.detachLocal();
+    if (state.socket) {
+      state.socket.emit('leave-room');
+      state.socket.disconnect();
+      state.socket = null;
+    }
+    $('app').classList.remove('active');
+    $('lobby').style.display = 'flex';
+    $('timer').textContent = '00:00';
+    $('room-name').textContent = 'Sala';
+  }
+
+  // ============================================================
+  //  INICIO DE LLAMADA (desde lobby)
+  // ============================================================
+  async function startCall() {
+    const name = $('name-input').value.trim() || 'Invitado';
+    const roomId = $('room-input').value.trim().toUpperCase();
+    const password = $('pwd-input').value;
+    const errEl = $('lobby-error');
+    errEl.textContent = '';
+    $('join-btn').disabled = true;
+    $('join-btn').textContent = 'Conectando…';
+
+    try {
+      await PeerManager.initLocalStream();
+    } catch (e) {
+      errEl.textContent = 'No se pudo acceder a micrófono/cámara: ' + e.message;
+      $('join-btn').disabled = false;
+      $('join-btn').textContent = 'Entrar';
+      return;
+    }
+
+    try {
+      const res = await connectSignaling(roomId || null, password, name);
+      state.roomId = res.roomId;
+      $('lobby').style.display = 'none';
+      $('app').classList.add('active');
+      $('room-name').textContent = 'Sala ' + res.roomId;
+      updateShareCode();
+      startTimer();
+      applyLocalTrackStates();
+      TileManager.render();
+      toast(`Sala: ${res.roomId}`);
+    } catch (e) {
+      errEl.textContent = e.message || 'Error al conectar';
+      if (state.localStream) {
+        state.localStream.getTracks().forEach(t => t.stop());
+        state.localStream = null;
+      }
+    } finally {
+      $('join-btn').disabled = false;
+      $('join-btn').textContent = 'Entrar';
+    }
+  }
+
+  function updateShareCode() {
+    // (share-code se muestra en empty state)
+    TileManager.render();
+  }
+
+  $('join-btn').addEventListener('click', startCall);
+  $('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') startCall(); });
+  $('room-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') startCall(); });
+
+  // ============================================================
+  //  ADAPTACIÓN DINÁMICA (stats WebRTC)
+  // ============================================================
+  function startStatsMonitor() {
+    if (state.statsInterval) clearInterval(state.statsInterval);
+    state.statsInterval = setInterval(async () => {
+      for (const [, e] of state.peers) {
+        if (!e.peer || !e.peer._pc) continue;
+        try {
+          const stats = await e.peer._pc.getStats();
+          let packetsLost = 0, packetsReceived = 0, rtt = 0;
+          stats.forEach(r => {
+            if (r.type === 'inbound-rtp' && r.kind === 'video') {
+              packetsLost += r.packetsLost || 0;
+              packetsReceived += r.packetsReceived || 0;
+            }
+            if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+              rtt = Math.max(rtt, r.currentRoundTripTime || 0);
+            }
+          });
+          // Si pérdida alta, podríamos pedir al peer que baje calidad.
+          // Por ahora es solo informativo.
+          e.stats = { packetsLost, packetsReceived, rtt };
+        } catch (err) {}
+      }
+    }, 5000);
+  }
+  startStatsMonitor();
+
+  // Limpieza al cerrar la página
+  window.addEventListener('beforeunload', () => {
+    leaveCall();
+  });
+
+  // Exponer para debug
+  window.__ghost = { state, TileManager, PeerManager, AudioMonitor };
+
+})();
+</script>
+</body>
+</html>
