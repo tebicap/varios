@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7c5cff">
+<title>Notitas</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:#241b3f;
+  background:#f6f3ff;
+  background-image:
+    radial-gradient(circle at 10% 0%, #e6dcff 0, rgba(230,220,255,0) 40%),
+    radial-gradient(circle at 100% 20%, #ffe1ec 0, rgba(255,225,236,0) 35%);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea{font-family:inherit;font-size:16px;color:inherit}
+.hidden{display:none !important}
+
+/* ---------- SETUP ---------- */
+#setup{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 18px}
+.card{
+  width:100%;max-width:440px;background:#fff;border-radius:28px;padding:28px 22px;
+  box-shadow:0 20px 50px rgba(124,92,255,.18);
+}
+.logo{font-size:56px;line-height:1;text-align:center;margin-bottom:6px}
+.card h1{margin:0 0 6px;text-align:center;font-size:28px;letter-spacing:-.5px}
+.card p.sub{margin:0 0 22px;text-align:center;color:#6d6488;font-size:15px;line-height:1.4}
+label{display:block;font-weight:700;font-size:13px;margin:14px 0 6px;color:#4b3f72}
+.field{
+  width:100%;padding:14px 16px;border-radius:16px;border:2px solid #ebe5ff;background:#faf8ff;outline:none;
+}
+.field:focus{border-color:#7c5cff;background:#fff}
+.btn{
+  display:block;width:100%;border:0;border-radius:16px;padding:15px 18px;font-weight:800;cursor:pointer;
+  background:#7c5cff;color:#fff;margin-top:20px;
+  box-shadow:0 8px 20px rgba(124,92,255,.35);
+}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.6}
+.err{margin-top:14px;padding:12px 14px;border-radius:14px;background:#ffe9ec;color:#b3203a;font-size:14px;line-height:1.4}
+details{margin-top:18px;font-size:13px;color:#6d6488}
+details summary{cursor:pointer;font-weight:700}
+details code{background:#f1ecff;padding:1px 6px;border-radius:6px;font-size:12px}
+
+/* ---------- APP ---------- */
+#app{max-width:720px;margin:0 auto;min-height:100%;padding-bottom:120px}
+.top{
+  position:sticky;top:0;z-index:5;padding:14px 16px 10px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+  background:rgba(246,243,255,.88);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+.row{display:flex;align-items:center;justify-content:space-between}
+.brand{font-size:26px;font-weight:900;letter-spacing:-.7px}
+.brand span{display:inline-block;transform:rotate(-8deg)}
+.icons{display:flex;gap:8px;align-items:center}
+.ibtn{
+  width:42px;height:42px;border-radius:14px;border:0;background:#fff;cursor:pointer;font-size:18px;
+  box-shadow:0 4px 12px rgba(124,92,255,.15);
+}
+.ibtn:active{transform:scale(.94)}
+.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.search{margin-top:12px}
+.search input{
+  width:100%;padding:13px 16px 13px 42px;border-radius:16px;border:0;outline:none;background:#fff;
+  box-shadow:0 4px 12px rgba(124,92,255,.12);
+}
+.search{position:relative}
+.search:before{content:"\1F50D";position:absolute;left:14px;top:50%;margin-top:-10px;font-size:16px;line-height:20px}
+#status{font-size:12px;color:#8a80a8;margin:8px 4px 0}
+
+#list{padding:6px 14px;display:block}
+.note{
+  border-radius:22px;padding:16px 16px 14px;margin:12px 0;cursor:pointer;
+  box-shadow:0 6px 18px rgba(36,27,63,.07);
+  transition:transform .12s;
+  animation:pop .25s ease-out;
+}
+.note:active{transform:scale(.98)}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.note h3{margin:0 0 6px;font-size:18px;line-height:1.25;word-wrap:break-word}
+.note p{margin:0;font-size:14.5px;line-height:1.45;color:rgba(36,27,63,.78);white-space:pre-wrap;word-wrap:break-word;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.note small{display:block;margin-top:10px;font-size:11.5px;color:rgba(36,27,63,.5);font-weight:600}
+.c0{background:#ffe9a8}.c1{background:#ffc9dc}.c2{background:#c9f0ff}
+.c3{background:#d4f7c5}.c4{background:#e1d4ff}.c5{background:#ffd9bd}
+
+.empty{text-align:center;padding:60px 24px;color:#7a7094}
+.empty .big{font-size:64px;margin-bottom:8px}
+
+.fab{
+  position:fixed;right:20px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:6;
+  width:64px;height:64px;border-radius:22px;border:0;cursor:pointer;
+  background:linear-gradient(135deg,#7c5cff,#ff6fa5);color:#fff;font-size:34px;line-height:1;
+  box-shadow:0 12px 28px rgba(124,92,255,.5);
+}
+.fab:active{transform:scale(.92) rotate(90deg)}
+
+/* ---------- EDITOR ---------- */
+#editor{
+  position:fixed;left:0;right:0;top:0;bottom:0;z-index:20;background:#fffdf7;
+  display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top);
+}
+.ebar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;gap:10px}
+.ebar .left,.ebar .right{display:flex;gap:8px}
+.pill{border:0;border-radius:14px;padding:11px 16px;font-weight:800;cursor:pointer;background:#f0ecff;color:#5b3fd6}
+.pill.save{background:#7c5cff;color:#fff;box-shadow:0 6px 14px rgba(124,92,255,.35)}
+.pill.del{background:#ffe9ec;color:#b3203a}
+.pill:active{transform:scale(.95)}
+#eTitle{
+  border:0;outline:none;background:transparent;font-weight:900;font-size:26px;padding:6px 18px;letter-spacing:-.5px;width:100%;
+}
+#eContent{
+  flex:1;border:0;outline:none;background:transparent;resize:none;padding:8px 18px 28px;font-size:17px;line-height:1.55;width:100%;
+}
+#eMeta{padding:0 18px;font-size:12px;color:#9a90b8;min-height:16px}
+
+/* ---------- TOAST / MENU ---------- */
+#toast{
+  position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));z-index:40;
+  transform:translateX(-50%);background:#241b3f;color:#fff;padding:12px 18px;border-radius:14px;
+  font-size:14px;font-weight:600;max-width:88%;text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#toast.show{opacity:1}
+#menu{position:fixed;left:0;right:0;top:0;bottom:0;z-index:30;background:rgba(36,27,63,.45);display:flex;align-items:flex-end;justify-content:center}
+#menu .sheet{
+  width:100%;max-width:560px;background:#fff;border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+}
+#menu h3{margin:0 0 4px}
+#menu p{margin:0 0 14px;color:#6d6488;font-size:14px;line-height:1.4;word-wrap:break-word}
+#menu .btn{margin-top:10px}
+#menu .btn.alt{background:#f0ecff;color:#5b3fd6;box-shadow:none}
+#menu .btn.red{background:#ff5c7a;box-shadow:0 8px 20px rgba(255,92,122,.35)}
+</style>
+</head>
+<body>
+
+<!-- ======= PANTALLA DE CONEXION ======= -->
+<div id="setup" class="hidden">
+  <div class="card">
+    <div class="logo">&#128221;</div>
+    <h1>Notitas</h1>
+    <p class="sub">Tus notas, en todos tus dispositivos.<br>Conectá tu base de datos Supabase una sola vez.</p>
+
+    <label for="sUrl">Project ID o URL del proyecto</label>
+    <input id="sUrl" class="field" type="text" placeholder="abcdxyzabcdxyz" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+    <label for="sKey">Clave (anon / publishable)</label>
+    <input id="sKey" class="field" type="password" placeholder="eyJhbGci... o sb_publishable_..." autocapitalize="off" autocorrect="off" spellcheck="false">
+
+    <button id="sGo" class="btn" type="button">Conectar &#128640;</button>
+    <div id="sErr" class="err hidden"></div>
+
+    <details>
+      <summary>&#191;D&oacute;nde encuentro esto?</summary>
+      <p>En Supabase: <b>Project Settings &rarr; General</b> para el <code>Project ID</code>, y <b>API Keys</b> para la clave <code>publishable</code> (o <code>anon</code>). Nunca uses la <code>secret</code> / <code>service_role</code>.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ======= APP ======= -->
+<div id="app" class="hidden">
+  <div class="top">
+    <div class="row">
+      <div class="brand"><span>&#128221;</span> Notitas</div>
+      <div class="icons">
+        <button id="bSync" class="ibtn" type="button" title="Sincronizar">&#128260;</button>
+        <button id="bMenu" class="ibtn" type="button" title="Ajustes">&#9881;&#65039;</button>
+      </div>
+    </div>
+    <div class="search"><input id="q" type="search" placeholder="Buscar notas..."></div>
+    <div id="status"></div>
+  </div>
+  <div id="list"></div>
+  <button id="bNew" class="fab" type="button" title="Nueva nota">+</button>
+</div>
+
+<!-- ======= EDITOR ======= -->
+<div id="editor" class="hidden">
+  <div class="ebar">
+    <div class="left"><button id="eBack" class="pill" type="button">&larr; Volver</button></div>
+    <div class="right">
+      <button id="eDel" class="pill del" type="button">&#128465;&#65039;</button>
+      <button id="eSave" class="pill save" type="button">Guardar</button>
+    </div>
+  </div>
+  <input id="eTitle" type="text" placeholder="T&iacute;tulo" maxlength="200">
+  <div id="eMeta"></div>
+  <textarea id="eContent" placeholder="Escrib&iacute; ac&aacute; lo que quieras..."></textarea>
+</div>
+
+<!-- ======= MENU ======= -->
+<div id="menu" class="hidden">
+  <div class="sheet">
+    <h3>Ajustes</h3>
+    <p id="mInfo"></p>
+    <button id="mClose" class="btn alt" type="button">Cerrar</button>
+    <button id="mOut" class="btn red" type="button">Desconectar este dispositivo</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  var LS_URL = 'notitas_url';
+  var LS_KEY = 'notitas_key';
+  var cfg = { url: '', key: '' };
+  var notes = [];
+  var editingId = null;
+  var loading = false;
+  var lastSync = null;
+  var pollTimer = null;
+  var toastTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- localStorage seguro ---------- */
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) {} }
+
+  /* ---------- helpers ---------- */
+  function show(id) { $(id).className = $(id).className.replace(/\bhidden\b/g, '').replace(/\s+$/, ''); }
+  function hide(id) { if ($(id).className.indexOf('hidden') === -1) { $(id).className += ' hidden'; } }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.className = 'show';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = ''; }, 2400);
+  }
+
+  function normUrl(u) {
+    u = (u || '').replace(/^\s+|\s+$/g, '');
+    if (!u) return '';
+    if (/^[a-z0-9]+$/i.test(u)) return 'https://' + u.toLowerCase() + '.supabase.co';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    u = u.replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+    return u;
+  }
+
+  function hash(s) {
+    var h = 0, i;
+    for (i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h = h & h; }
+    return Math.abs(h);
+  }
+
+  function ago(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    var s = Math.floor((new Date().getTime() - d.getTime()) / 1000);
+    if (s < 45) return 'ahora mismo';
+    if (s < 3600) return 'hace ' + Math.floor(s / 60 + 0.5) + ' min';
+    if (s < 86400) return 'hace ' + Math.floor(s / 3600) + ' h';
+    if (s < 86400 * 7) return 'hace ' + Math.floor(s / 86400) + ' d';
+    return d.toLocaleDateString();
+  }
+
+  /* ---------- API Supabase (REST, XMLHttpRequest) ---------- */
+  function api(method, path, body, cb) {
+    var x = new XMLHttpRequest();
+    x.open(method, cfg.url + '/rest/v1/' + path, true);
+    x.setRequestHeader('apikey', cfg.key);
+    if (cfg.key.indexOf('eyJ') === 0) { x.setRequestHeader('Authorization', 'Bearer ' + cfg.key); }
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.setRequestHeader('Prefer', 'return=representation');
+    x.onload = function () {
+      var data = null;
+      try { data = JSON.parse(x.responseText); } catch (e) {}
+      if (x.status >= 200 && x.status < 300) {
+        cb(null, data);
+      } else {
+        var msg = (data && (data.message || data.error_description || data.hint)) || ('Error ' + x.status);
+        if (data && data.code === 'PGRST205') { msg = 'No encuentro la tabla "notes". Ejecut\u00e1 el SQL en Supabase.'; }
+        if (x.status === 401 || x.status === 403) { msg = 'Clave rechazada o sin permisos (revis\u00e1 la clave y las policies RLS).'; }
+        cb({ status: x.status, message: msg });
+      }
+    };
+    x.onerror = function () { cb({ status: 0, message: 'Sin conexi\u00f3n o URL incorrecta.' }); };
+    x.send(body ? JSON.stringify(body) : null);
+  }
+
+  /* ---------- Setup ---------- */
+  function showSetup(prefill) {
+    hide('app'); hide('editor'); hide('menu');
+    show('setup');
+    if (prefill) { $('sUrl').value = cfg.url; }
+  }
+
+  function setupErr(msg) {
+    var e = $('sErr');
+    if (!msg) { hide('sErr'); return; }
+    e.textContent = msg;
+    show('sErr');
+  }
+
+  function doConnect() {
+    var u = normUrl($('sUrl').value);
+    var k = $('sKey').value.replace(/\s+/g, '');
+    setupErr('');
+    if (!u || !k) { setupErr('Complet\u00e1 la URL y la clave.'); return; }
+    cfg.url = u; cfg.key = k;
+    $('sGo').disabled = true;
+    $('sGo').textContent = 'Probando conexi\u00f3n...';
+    api('GET', 'notes?select=id&limit=1', null, function (err) {
+      $('sGo').disabled = false;
+      $('sGo').innerHTML = 'Conectar &#128640;';
+      if (err) { setupErr(err.message); return; }
+      lsSet(LS_URL, u);
+      lsSet(LS_KEY, k);
+      startApp();
+    });
+  }
+
+  /* ---------- App ---------- */
+  function startApp() {
+    hide('setup');
+    show('app');
+    loadNotes(true);
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function () {
+      if (editingId === null && !document.hidden) { loadNotes(false); }
+    }, 20000);
+  }
+
+  function setSpin(on) {
+    $('bSync').className = 'ibtn' + (on ? ' spin' : '');
+  }
+
+  function loadNotes(manual) {
+    if (loading) return;
+    loading = true;
+    setSpin(true);
+    api('GET', 'notes?select=*&order=updated_at.desc', null, function (err, data) {
+      loading = false;
+      setSpin(false);
+      if (err) {
+        $('status').textContent = '\u26a0\ufe0f ' + err.message;
+        if (manual) toast(err.message);
+        return;
+      }
+      notes = data || [];
+      lastSync = new Date();
+      render();
+    });
+  }
+
+  function render() {
+    var list = $('list');
+    var q = $('q').value.toLowerCase();
+    var shown = [], i, n;
+    for (i = 0; i < notes.length; i++) {
+      n = notes[i];
+      if (!q || (n.title || '').toLowerCase().indexOf(q) !== -1 || (n.content || '').toLowerCase().indexOf(q) !== -1) {
+        shown.push(n);
+      }
+    }
+    list.innerHTML = '';
+    $('status').textContent = notes.length + (notes.length === 1 ? ' nota' : ' notas') +
+      (lastSync ? ' \u00b7 sincronizado ' + ago(lastSync.toISOString()) : '');
+
+    if (!shown.length) {
+      var em = document.createElement('div');
+      em.className = 'empty';
+      em.innerHTML = '<div class="big">' + (notes.length ? '&#129300;' : '&#127775;') + '</div>' +
+        (notes.length ? 'Nada coincide con tu b\u00fasqueda.' : 'Todav\u00eda no hay notas.<br>Toc\u00e1 el <b>+</b> para crear la primera.');
+      list.appendChild(em);
+      return;
+    }
+    for (i = 0; i < shown.length; i++) { list.appendChild(buildCard(shown[i])); }
+  }
+
+  function buildCard(n) {
+    var d = document.createElement('div');
+    d.className = 'note c' + (hash(String(n.id)) % 6);
+    var h = document.createElement('h3');
+    h.textContent = n.title || 'Sin t\u00edtulo';
+    var p = document.createElement('p');
+    p.textContent = n.content || '';
+    var s = document.createElement('small');
+    s.textContent = ago(n.updated_at);
+    d.appendChild(h);
+    if (n.content) d.appendChild(p);
+    d.appendChild(s);
+    d.onclick = function () { openEditor(n.id); };
+    return d;
+  }
+
+  /* ---------- Editor ---------- */
+  function findNote(id) {
+    var i;
+    for (i = 0; i < notes.length; i++) { if (String(notes[i].id) === String(id)) return notes[i]; }
+    return null;
+  }
+
+  function openEditor(id) {
+    var n = id ? findNote(id) : null;
+    editingId = n ? n.id : 0; // 0 = nota nueva
+    $('eTitle').value = n ? (n.title || '') : '';
+    $('eContent').value = n ? (n.content || '') : '';
+    $('eMeta').textContent = n ? ('Editada ' + ago(n.updated_at)) : 'Nota nueva';
+    if (n) { show('eDel'); } else { hide('eDel'); }
+    show('editor');
+    if (!n) { setTimeout(function () { $('eTitle').focus(); }, 60); }
+  }
+
+  function closeEditor() {
+    editingId = null;
+    hide('editor');
+  }
+
+  function saveNote() {
+    var title = $('eTitle').value.replace(/^\s+|\s+$/g, '');
+    var content = $('eContent').value;
+    if (!title && !content.replace(/\s+/g, '')) { toast('La nota est\u00e1 vac\u00eda'); return; }
+    if (!title) title = 'Sin t\u00edtulo';
+    var now = new Date().toISOString();
+    $('eSave').disabled = true;
+    $('eSave').textContent = 'Guardando...';
+
+    function done(err, data) {
+      $('eSave').disabled = false;
+      $('eSave').textContent = 'Guardar';
+      if (err) { toast('No se pudo guardar: ' + err.message); return; }
+      toast('Guardado \u2728');
+      closeEditor();
+      loadNotes(false);
+    }
+
+    if (editingId) {
+      api('PATCH', 'notes?id=eq.' + encodeURIComponent(editingId),
+        { title: title, content: content, updated_at: now }, done);
+    } else {
+      api('POST', 'notes', { title: title, content: content }, done);
+    }
+  }
+
+  function deleteNote() {
+    if (!editingId) return;
+    if (!window.confirm('\u00bfBorrar esta nota para siempre?')) return;
+    api('DELETE', 'notes?id=eq.' + encodeURIComponent(editingId), null, function (err) {
+      if (err) { toast('No se pudo borrar: ' + err.message); return; }
+      toast('Nota borrada \ud83d\uddd1\ufe0f');
+      closeEditor();
+      loadNotes(false);
+    });
+  }
+
+  /* ---------- Menu ---------- */
+  function openMenu() {
+    $('mInfo').textContent = 'Conectado a: ' + cfg.url;
+    show('menu');
+  }
+  function disconnect() {
+    if (!window.confirm('Se borrar\u00e1n la URL y la clave de este dispositivo (tus notas siguen en Supabase). \u00bfSeguro?')) return;
+    lsDel(LS_URL); lsDel(LS_KEY);
+    clearInterval(pollTimer);
+    cfg = { url: '', key: '' };
+    notes = [];
+    $('sKey').value = '';
+    $('sUrl').value = '';
+    showSetup(false);
+  }
+
+  /* ---------- Eventos ---------- */
+  $('sGo').onclick = doConnect;
+  $('sKey').onkeydown = function (e) { if (e.keyCode === 13) doConnect(); };
+  $('bNew').onclick = function () { openEditor(null); };
+  $('bSync').onclick = function () { loadNotes(true); };
+  $('bMenu').onclick = openMenu;
+  $('mClose').onclick = function () { hide('menu'); };
+  $('mOut').onclick = function () { hide('menu'); disconnect(); };
+  $('menu').onclick = function (e) { if (e.target === $('menu')) hide('menu'); };
+  $('eBack').onclick = closeEditor;
+  $('eSave').onclick = saveNote;
+  $('eDel').onclick = deleteNote;
+  $('q').oninput = render;
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && cfg.key && editingId === null) { loadNotes(false); }
+  });
+
+  /* ---------- Arranque ---------- */
+  var su = lsGet(LS_URL), sk = lsGet(LS_KEY);
+  if (su && sk) {
+    cfg.url = su; cfg.key = sk;
+    startApp();
+  } else {
+    showSetup(false);
+  }
+})();
+</script>
+</body>
+</html>
